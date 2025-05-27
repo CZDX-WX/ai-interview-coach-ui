@@ -1,0 +1,217 @@
+/* src/assets/styles/auth-forms.css */
+
+.form-container {
+    width: 100%;
+    max-width: 480px; /* Max width similar to prototype */
+    padding: 2rem;
+    background-color: var(--card-bg-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); /* Adjusted shadow for a bit more subtlety */
+    border: 1px solid var(--border-color);
+}
+[data-theme="dark"] .form-container {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Darker shadow for dark mode */
+}
+
+.form-title {
+    text-align: center;
+    font-size: 1.75rem; /* text-[28px] */
+    font-weight: bold;
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+}
+
+.form-subtitle {
+    text-align: center;
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0.8;
+    margin-bottom: 1.5rem;
+    line-height: 1.4;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem; /* Spacing between form elements */
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem; /* Space between label and input */
+}
+
+.form-group label {
+    font-size: 0.95rem; /* Slightly smaller label */
+    font-weight: 500; /* font-medium */
+    color: var(--text-color);
+}
+
+.form-input {
+    width: 100%;
+    padding: 0.875rem 1rem; /* Adjusted padding */
+    font-size: 1rem;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    border-radius: 6px; /* Slightly less rounded */
+    color: var(--text-color);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+[data-theme="light"] .form-input {
+    background-color: #f8f9fc; /* Specific to light theme as in prototype */
+}
+[data-theme="dark"] .form-input {
+    background-color: #2a2a2e; /* Darker input bg for dark theme */
+}
+
+.form-input::placeholder {
+    color: #6c757d; /* More standard placeholder color */
+    opacity: 0.7;
+}
+[data-theme="dark"] .form-input::placeholder {
+    color: #868e96;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary-color) 20%, transparent); /* Subtle focus ring */
+}
+
+.form-options {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 0.5rem 0;
+    font-size: 0.875rem; /* text-sm */
+}
+
+.checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    color: var(--text-color);
+}
+.checkbox-group input[type="checkbox"] {
+    width: 1.1em; /* Adjusted size */
+    height: 1.1em;
+    border-radius: 0.15em;
+    border: 2px solid var(--border-color);
+    accent-color: var(--primary-color); /* Modern way to style checkbox color */
+    background-color: var(--bg-color); /* Ensure background matches for un-themed browsers */
+    vertical-align: middle;
+}
+.checkbox-group input[type="checkbox"]:checked {
+    background-color: var(--primary-color); /* Ensure background for checked state */
+}
+[data-theme="light"] .checkbox-group input[type="checkbox"] {
+    border-color: #adb5bd;
+}
+[data-theme="dark"] .checkbox-group input[type="checkbox"] {
+    border-color: #495057;
+    background-color: #343a40; /* Background for dark mode unchecked */
+}
+
+
+.form-link {
+    color: var(--primary-color);
+    text-decoration: none; /* Remove underline by default */
+}
+.form-link:hover {
+    text-decoration: underline; /* Underline on hover */
+}
+
+.form-button {
+    width: 100%;
+    padding: 0.75rem 1rem; /* Adjusted padding */
+    font-size: 1rem; /* text-base */
+    font-weight: bold;
+    background-color: var(--primary-color);
+    color: white; /* Usually white text for primary buttons */
+    border: none;
+    border-radius: 6px; /* Slightly less rounded */
+    cursor: pointer;
+    transition: background-color 0.2s ease, opacity 0.2s ease;
+    letter-spacing: 0.015em;
+    text-align: center;
+}
+
+/* Ensuring contrast for buttons - specific override if needed but white/dark text on primary should generally work */
+[data-theme="light"] .form-button {
+    color: #ffffff; /* Ensuring white text for light theme primary button */
+}
+[data-theme="dark"] .form-button {
+    color: #ffffff; /* Ensuring white text for dark theme primary button - depends on primary color choice */
+    /* If dark theme primary is light, this might need to be var(--text-color-dark-on-primary) or similar */
+}
+
+
+.form-button:hover {
+    opacity: 0.85; /* Slightly different hover effect */
+}
+.form-button:disabled {
+    background-color: color-mix(in srgb, var(--primary-color) 50%, var(--bg-color) 50%);
+    color: color-mix(in srgb, var(--text-color) 60%, var(--bg-color) 40%);
+    cursor: not-allowed;
+    opacity: 0.7;
+}
+
+.form-switch-link {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem; /* Slightly larger */
+    color: var(--text-color);
+}
+.form-switch-link a {
+    color: var(--primary-color);
+    font-weight: 500;
+    text-decoration: none; /* No underline by default */
+}
+.form-switch-link a:hover {
+    text-decoration: underline; /* Underline on hover */
+}
+
+/* Generic message styles */
+.message,
+.error-message { /* Combined .error-message into .message.error for consistency */
+    padding: 0.875rem 1rem; /* Adjusted padding */
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+    border: 1px solid transparent;
+}
+
+.message.success {
+    background-color: color-mix(in srgb, var(--primary-color) 15%, var(--bg-color) 85%);
+    color: color-mix(in srgb, var(--primary-color) 80%, var(--text-color) 20%);
+    border-color: color-mix(in srgb, var(--primary-color) 30%, var(--bg-color) 70%);
+}
+[data-theme="dark"] .message.success {
+    background-color: color-mix(in srgb, var(--primary-color) 20%, var(--bg-color) 80%);
+    color: color-mix(in srgb, var(--primary-color) 90%, white 10%); /* Ensure readable text */
+    border-color: color-mix(in srgb, var(--primary-color) 40%, var(--bg-color) 60%);
+}
+
+.message.error {
+    background-color: #ffe3e3; /* More specific error colors for better visibility */
+    color: #c00;
+    border-color: #ffb3b3;
+}
+[data-theme="dark"] .message.error {
+    background-color: #4d1f1f;
+    color: #ffcccc;
+    border-color: #8b3333;
+}
+
+/* Field-specific error text */
+.error-text-field {
+    color: #c00; /* Consistent error red */
+    font-size: 0.8rem; /* Smaller for field-level errors */
+    margin-top: 0.25rem;
+}
+[data-theme="dark"] .error-text-field {
+    color: #ffcccc;
+}

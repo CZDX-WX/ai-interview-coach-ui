@@ -1,0 +1,170 @@
+/* src/assets/styles/main.css */
+@import './auth-forms.css';
+
+:root {
+    /* Light Theme Variables */
+    --bg-color: #ffffff;
+    --text-color: #2c3e50; /* Dark grey/blue for text */
+    --text-color-muted: #6c757d; /* Muted text for less emphasis */
+    --primary-color: #007bff; /* A standard vibrant blue - Changed from #4A90E2 for better contrast */
+    --primary-color-translucent: rgba(0, 123, 255, 0.1); /* Translucent primary */
+    --secondary-color: #6c757d; /* Grey - Changed from orange for more professional feel */
+    --border-color: #dee2e6; /* Light grey for borders */
+    --card-bg-color: #f8f9fa; /* Very light grey for cards */
+    --link-color: var(--primary-color);
+    --link-hover-color: #0056b3; /* Darker blue for hover */
+
+    /* Input specific variables for light theme (can often be derived from above) */
+    --input-bg-color: #ffffff;
+    --input-border-color: #ced4da;
+    --input-focus-border-color: #80bdff; /* Light blue focus, often matches primary */
+    --placeholder-color: #6c757d;
+
+    /* SVG for select dropdown arrow - Light theme */
+    --select-button-svg: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(71,86,158)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e');
+}
+
+[data-theme="dark"] {
+    /* Dark Theme Variables */
+    --bg-color: #121416; /* Dark background from recent prototypes */
+    --text-color: #e0e0e7; /* Light grey/off-white for text */
+    --text-color-muted: #a2aab3; /* Muted light grey */
+    --primary-color: #007bff; /* #3b82f6; /* Vibrant blue, good on dark */
+    --primary-color-translucent: rgba(59, 130, 246, 0.15); /* Translucent primary for dark */
+    --secondary-color: #495057; /* Darker grey for secondary elements */
+    --border-color: #2c3035; /* Dark border from recent prototypes */
+    --card-bg-color: #1e2124; /* Dark card background from recent prototypes */
+    --link-color: var(--primary-color);
+    --link-hover-color: #58a6ff; /* Lighter blue for hover on dark */
+
+    /* Input specific variables for dark theme (as per prototype) */
+    --input-bg-color: #1e2124; /* e.g., bg-[#1e2124] */
+    --input-border-color: #40474f; /* e.g., border-[#40474f] */
+    --input-focus-border-color: var(--primary-color); /* Primary color for focus */
+    --placeholder-color: #a2aab3; /* e.g., placeholder:text-[#a2aab3] */
+
+    /* SVG for select dropdown arrow - Dark theme */
+    --select-button-svg: url('data:image/svg+xml,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2724px%27 height=%2724px%27 fill=%27rgb(162,170,179)%27 viewBox=%270 0 256 256%27%3e%3cpath d=%27M181.66,170.34a8,8,0,0,1,0,11.32l-48,48a8,8,0,0,1-11.32,0l-48-48a8,8,0,0,1,11.32-11.32L128,212.69l42.34-42.35A8,8,0,0,1,181.66,170.34Zm-96-84.68L128,43.31l42.34,42.35a8,8,0,0,0,11.32-11.32l-48-48a8,8,0,0,0-11.32,0l-48,48A8,8,0,0,0,85.66,85.66Z%27%3e%3c/path%3e%3c/svg%3e');
+}
+
+/* Reset and Base Styles (keep these as they were) */
+/* ... (rest of your global styles: *, html, body, #app, a, button etc.) ... */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans',
+    'Helvetica Neue', sans-serif; /* Changed from Manrope to Inter as it's more common for UIs */
+    line-height: 1.6;
+    font-size: 16px;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s ease, color 0.3s ease;
+    min-height: 100vh;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+a {
+    color: var(--link-color);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+a:hover {
+    color: var(--link-hover-color);
+}
+
+/* General button styling (can be overridden by .form-button or other specific buttons) */
+button {
+    cursor: pointer;
+    padding: 0.5em 1em;
+    border: 1px solid var(--primary-color);
+    background-color: var(--primary-color);
+    color: white; /* Default assumption, ensure contrast */
+    border-radius: 4px;
+    font-weight: 500;
+    transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+}
+
+button:hover {
+    opacity: 0.85;
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Common form input style using the new variables */
+.form-input { /* This is a base class you might apply or extend */
+    width: 100%;
+    padding: 0.875rem 1rem;
+    font-size: 1rem;
+    background-color: var(--input-bg-color);
+    border: 1px solid var(--input-border-color);
+    border-radius: 6px;
+    color: var(--text-color);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-input::placeholder {
+    color: var(--placeholder-color);
+    opacity: 0.7; /* Ensure placeholder is not too strong */
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: var(--input-focus-border-color, var(--primary-color)); /* Fallback to primary color */
+    box-shadow: 0 0 0 2px var(--primary-color-translucent);
+}
+
+.file-upload-area .file-upload-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2.5rem 1rem;
+    border: 2px dashed var(--border-color);
+    border-radius: 8px;
+    background-color: color-mix(in srgb, var(--bg-color) 50%, var(--card-bg-color) 50%);
+    cursor: pointer;
+    transition: border-color 0.2s ease, background-color 0.2s ease;
+    text-align: center;
+    font-size: 0.95rem;
+    color: var(--text-color);
+    opacity: 0.9;
+}
+
+.file-upload-area .file-upload-label:hover {
+    border-color: var(--primary-color);
+    background-color: color-mix(in srgb, var(--primary-color) 5%, transparent);
+}
+
+.file-upload-area .upload-icon { /* Larger icon for this style */
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.file-upload-area .file-upload-label small {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    margin-top: 0.5rem;
+}
