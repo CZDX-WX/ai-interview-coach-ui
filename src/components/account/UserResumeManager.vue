@@ -28,7 +28,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
-import type { ResumeInfo } from '../../stores/interviewSetup'; // Or your shared types
+import type { ResumeInfo } from '@/stores/interviewSetup'; // Or your shared types
 // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
 defineProps<{
@@ -59,31 +59,85 @@ const emitDelete = (resumeId: string) => {
 </script>
 
 <style scoped>
-/* 样式从 AccountSettingsView.vue 迁移和调整 */
-.settings-section { /* ... (same as UserProfileInfoForm) ... */ }
-.section-title { /* ... (same as UserProfileInfoForm) ... */ }
-.resume-list { display: flex; flex-direction: column; gap: 0.75rem; margin-bottom: 1.5rem; }
-.resume-item { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background-color: var(--bg-color); border-radius: 6px; border: 1px solid var(--border-color); }
+.settings-section {
+  background-color: var(--card-bg-color);
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+[data-theme="dark"] .settings-section {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.section-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  color: var(--text-color);
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+[data-theme="dark"] .section-title { color: #ffffff; }
+.resume-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+.resume-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background-color: var(--bg-color);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
 [data-theme="dark"] .resume-item { background-color: #121416; }
+
 .resume-info { display: flex; align-items: center; gap: 1rem; overflow: hidden; flex-grow: 1; min-width: 0; }
-.resume-icon { font-size: 1.5rem; color: var(--primary-color); width: 3rem; height: 3rem; background-color: var(--border-color); border-radius: 0.5rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0;}
+.resume-icon {
+  font-size: 1.5rem; color: var(--primary-color); width: 3rem; height: 3rem;
+  background-color: var(--border-color); border-radius: 0.5rem;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
 [data-theme="dark"] .resume-icon { color: #ffffff; background-color: #2c3035; }
-.resume-name { font-weight: 500; color: var(--text-color); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 300px;}
+
+.resume-name {
+  font-weight: 500; color: var(--text-color); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; display: inline-block; max-width: 300px;
+}
 [data-theme="dark"] .resume-name { color: #ffffff; }
+
 .resume-date { font-size: 0.8rem; color: var(--text-color); opacity: 0.7; margin-left: 0.5rem; white-space: nowrap; flex-shrink: 0;}
 [data-theme="dark"] .resume-date { color: #a2aab3; }
-.button-icon-only { background: none; border: none; color: var(--text-color); opacity: 0.7; padding: 0.5rem; border-radius: 50%; cursor: pointer; transition: opacity 0.2s ease, background-color 0.2s ease; flex-shrink: 0; margin-left: 1rem;}
+
+.button-icon-only {
+  background: none; border: none; color: var(--text-color); opacity: 0.7;
+  padding: 0.5rem; border-radius: 50%; cursor: pointer;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
+  flex-shrink: 0; margin-left: 1rem;
+}
 [data-theme="dark"] .button-icon-only { color: #ffffff; }
 .button-icon-only:hover { opacity: 1; background-color: color-mix(in srgb, var(--text-color) 10%, transparent); }
 .delete-resume-button:hover { color: #ef4444; }
 [data-theme="dark"] .delete-resume-button:hover { color: #fc8181; }
 
 .empty-text { font-size: 0.9rem; opacity: 0.7; margin-bottom: 1.5rem; text-align: center; padding: 0.5rem 0; }
-.file-upload-area.small-upload { margin-top: 1rem; }
-.file-input-hidden { width: 0.1px; height: 0.1px; opacity: 0; overflow: hidden; position: absolute; z-index: -1;}
-.file-upload-label { display: inline-flex; flex-direction: row; align-items: center; justify-content: center; gap: 0.75rem; padding: 0.75rem 1.25rem; border: 1px solid var(--input-border-color, #40474f); background-color: var(--input-bg-color, #1e2124); color: var(--text-color); border-radius: 6px; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease;}
-[data-theme="dark"] .file-upload-label { border-color: #40474f; background-color: #1e2124; color: #ffffff; }
-.file-upload-label:hover { border-color: var(--primary-color); background-color: color-mix(in srgb, var(--primary-color) 10%, var(--input-bg-color, #1e2124));}
+
+.file-upload-area.small-upload { /* 样式保持不变 */ }
+.file-input-hidden { display: none; }
+.file-upload-label {
+  display: inline-flex; flex-direction: row; align-items: center; justify-content: center;
+  gap: 0.75rem; padding: 0.75rem 1.25rem;
+  border: 1px dashed var(--input-border-color); /* 改为虚线以区分 */
+  background-color: transparent;
+  color: var(--text-color); border-radius: 6px; cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+[data-theme="dark"] .file-upload-label { border-color: #40474f; color: #ffffff; }
+.file-upload-label:hover { border-color: var(--primary-color); background-color: color-mix(in srgb, var(--primary-color) 10%, transparent); }
 .upload-icon-small { font-size: 1.1rem; color: var(--primary-color); }
 .status-text { font-size: 0.9rem; opacity: 0.7; margin-top: 0.5rem; text-align: left; }
 </style>

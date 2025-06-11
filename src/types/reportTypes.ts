@@ -1,54 +1,54 @@
+// src/types/reportTypes.ts
+// (内容与您上次确认的基本一致，确保所有 string 类型的字段在赋值时使用中文)
+
 export interface CoreAbilityScore {
-    id: string; // e.g., 'professionalKnowledge', 'skillsMatch', 'languageExpression', 'logicalThinking', 'innovation', 'stressResistance'
-    name: string;
-    score: number; // 0-100
-    description?: string; // Brief explanation of this ability
+    id: string;
+    name: string; // 例如 "专业知识水平" (中文)
+    score: number;
+    description?: string; // (中文)
 }
 
 export interface KeyMoment {
-    // videoSegmentId?: string; // If you have segmented video
-    timestampDisplay: string; // e.g., "02:15 (Phase: Technical Q&A)"
-    observation: string;
-    suggestion?: string;
-    isPositive?: boolean; // To style as strength or area for improvement
-    // relevantMetricIds?: string[]; // Link to CoreAbilityScore ids
+    timestampDisplay: string; // 例如 "02:15 (阶段: 技术问答)" (中文)
+    observation: string; // (中文)
+    suggestion?: string; // (中文)
+    isPositive?: boolean;
 }
 
 export interface PhaseMetric {
-    name: string; // e.g., "Algorithm Logic", "Clarity of Speech", "STAR Method Usage"
-    score: number; // 0-100
-    feedback: string; // Specific feedback for this metric in this phase
+    name: string; // 例如 "算法逻辑", "口齿清晰度" (中文)
+    score: number;
+    feedback: string; // (中文)
 }
 
 export interface PhaseBreakdown {
-    phaseId: string; // e.g., 'selfIntro', 'techQA', 'codingExercise'
-    phaseName: string;
-    overallPhaseScore?: number; // Optional overall score for the phase
+    phaseId: string;
+    phaseName: string; // (中文)
+    overallPhaseScore?: number;
     metrics: PhaseMetric[];
-    strengths?: string[];
-    areasForImprovement?: string[];
+    strengths?: string[]; // (中文)
+    areasForImprovement?: string[]; // (中文)
 }
 
 export interface RecommendedResource {
     id: string;
-    title: string;
-    type: 'video' | 'article' | 'course' | 'tool';
-    url: string; // External link
-    icon: string; // e.g., Font Awesome icon name like 'video', 'book-open', 'graduation-cap'
-    description?: string;
+    title: string; // (中文)
+    type: '视频' | '文章' | '课程' | '工具' | '教学'; // 类型标签 (中文，例如 "视频", "文章")
+    url: string;
+    icon: string; // Font Awesome icon name
+    description?: string; // (中文)
 }
 
 export interface InterviewReport {
     sessionId: string;
-    interviewJobFieldLabel: string;
-    interviewExperienceLevelLabel: string;
-    interviewDate: string; // e.g., "July 26, 2024"
-    overallScore: number; // 0-100
-    overallSummaryText: string;
+    interviewJobFieldLabel: string; // (中文)
+    interviewExperienceLevelLabel: string; // (中文)
+    interviewDate: string; // 例如 "2024年7月26日"
+    overallScore: number;
+    overallSummaryText: string; // (中文)
     coreAbilities: CoreAbilityScore[];
     keyMoments: KeyMoment[];
     phaseBreakdown: PhaseBreakdown[];
-    // videoUrl?: string; // URL to the full recorded interview (placeholder)
     recommendedResources: RecommendedResource[];
-    selectedPhaseIds: string[]; // To know which phases were part of this interview
+    selectedPhaseIds: string[]; // 记录本次面试实际包含的阶段ID
 }

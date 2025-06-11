@@ -1,676 +1,168 @@
 <template>
   <div class="report-view" v-if="reportData">
-    <div class="report-header">
-      <h1 class="page-title">
-        <font-awesome-icon :icon="['fas', 'file-invoice']" />
-        Interview Report
-      </h1>
-      <p class="report-subtitle">{{ reportData.interviewJobFieldLabel }} - {{ reportData.interviewExperienceLevelLabel }} | {{ reportData.interviewDate }}</p>
-    </div>
+    <ReportHeader
+        :jobFieldLabel="reportData.interviewJobFieldLabel"
+        :experienceLevelLabel="reportData.interviewExperienceLevelLabel"
+        :interviewDate="reportData.interviewDate"
+        :sessionId="reportData.sessionId"
+    />
 
-    <section class="report-section overall-summary-section">
-      <h2 class="section-title">Overall Summary</h2>
-      <div class="summary-card">
-        <div class="overall-score">
-          <p class="score-value">{{ reportData.overallScore }}<span>/100</span></p>
-          <p class="score-label">Overall Score</p>
-        </div>
-        <p class="summary-text">{{ reportData.overallSummaryText }}</p>
-      </div>
-    </section>
+    <ReportOverallSummary
+        :overallScore="reportData.overallScore"
+        :summaryText="reportData.overallSummaryText"
+    />
 
-    <section class="report-section radar-chart-section">
-      <h2 class="section-title">Core Ability Metrics</h2>
-      <div class="chart-container">
-        <Radar v-if="chartData.labels?.length" :data="chartData" :options="chartOptions" />
-        <p v-else>No ability data to display.</p>
-      </div>
-    </section>
+    <CoreAbilitiesRadarChart
+        :coreAbilities="reportData.coreAbilities"
+    />
 
     <section class="report-section detailed-feedback-section">
-      <div class="tabs">
-        <button
-            :class="['tab-button', { active: activeTab === 'phaseBreakdown' }]"
-            @click="activeTab = 'phaseBreakdown'">
-          <font-awesome-icon :icon="['fas', 'layer-group']"/> Performance by Phase
-        </button>
-        <button
-            :class="['tab-button', { active: activeTab === 'keyMoments' }]"
-            @click="activeTab = 'keyMoments'">
-          <font-awesome-icon :icon="['fas', 'star']"/> Key Moments & Suggestions
-        </button>
-        <button
-            :class="['tab-button', { active: activeTab === 'coreAbilitiesDetail' }]"
-            @click="activeTab = 'coreAbilitiesDetail'">
-          <font-awesome-icon :icon="['fas', 'tasks']"/> Core Abilities Detail
-        </button>
-      </div>
-
-      <div class="tab-content">
-        <div v-if="activeTab === 'phaseBreakdown'" class="phase-breakdown-content">
-          <div v-for="phase in reportData.phaseBreakdown" :key="phase.phaseId" class="phase-card">
-            <h3 class="phase-name">{{ phase.phaseName }} <span v-if="phase.overallPhaseScore" class="phase-score-badge">{{ phase.overallPhaseScore }}/100</span></h3>
-            <div class="phase-metrics-grid">
-              <div v-for="metric in phase.metrics" :key="metric.name" class="metric-item">
-                <p class="metric-name">{{ metric.name }}: <span class="metric-score">{{ metric.score }}/100</span></p>
-                <p class="metric-feedback">{{ metric.feedback }}</p>
-              </div>
-            </div>
-            <div v-if="phase.strengths?.length" class="strengths-list">
-              <strong>Strengths:</strong>
-              <ul><li v-for="strength in phase.strengths" :key="strength">{{ strength }}</li></ul>
-            </div>
-            <div v-if="phase.areasForImprovement?.length" class="improvements-list">
-              <strong>Areas for Improvement:</strong>
-              <ul><li v-for="area in phase.areasForImprovement" :key="area">{{ area }}</li></ul>
-            </div>
-          </div>
-        </div>
-
-        <div v-if="activeTab === 'keyMoments'" class="key-moments-content">
-          <div v-for="(moment, index) in reportData.keyMoments" :key="index" class="key-moment-item" :class="{ positive: moment.isPositive, improvement: !moment.isPositive }">
-            <div class="moment-icon">
-              <font-awesome-icon :icon="moment.isPositive ? ['fas', 'thumbs-up'] : ['fas', 'exclamation-triangle']" />
-            </div>
-            <div class="moment-details">
-              <p class="moment-timestamp">{{ moment.timestampDisplay }}</p>
-              <p class="moment-observation">{{ moment.observation }}</p>
-              <p v-if="moment.suggestion" class="moment-suggestion"><strong>Suggestion:</strong> {{ moment.suggestion }}</p>
-            </div>
-          </div>
-          <p v-if="!reportData.keyMoments.length">No specific key moments highlighted for this interview.</p>
-        </div>
-
-        <div v-if="activeTab === 'coreAbilitiesDetail'" class="core-abilities-detail-content">
-          <div v-for="ability in reportData.coreAbilities" :key="ability.id" class="ability-detail-item">
-            <h4>{{ ability.name }} - <span class="score-value-small">{{ ability.score }}/100</span></h4>
-            <p v-if="ability.description">{{ ability.description }}</p>
-          </div>
-        </div>
+      <ReportTabs :tabs="feedbackTabs" v-model:activeTabId="activeTab" />
+      <div class="tab-content-wrapper">
+        <ReportPhaseBreakdownContent v-if="activeTab === 'phaseBreakdown'" :phaseBreakdownData="reportData.phaseBreakdown" />
+        <ReportKeyMomentsContent v-if="activeTab === 'keyMoments'" :keyMomentsData="reportData.keyMoments" />
+        <ReportCoreAbilitiesDetailContent v-if="activeTab === 'coreAbilitiesDetail'" :coreAbilitiesData="reportData.coreAbilities" />
       </div>
     </section>
 
-    <section class="report-section video-playback-section">
-      <h2 class="section-title">Interview Playback</h2>
-      <div class="video-placeholder">
-        <font-awesome-icon :icon="['fas', 'play-circle']" class="play-icon"/>
-        <p>Video playback will be available here.</p>
-      </div>
-    </section>
+    <VideoPlaybackSection :videoUrl="mockVideoUrl" /> <RecommendedResourcesSection v-if="reportData.recommendedResources.length > 0" :resources="reportData.recommendedResources" />
 
-    <section class="report-section recommended-resources-section" v-if="reportData.recommendedResources.length > 0">
-      <h2 class="section-title">Personalized Learning Resources</h2>
-      <div class="resources-grid">
-        <a v-for="resource in reportData.recommendedResources" :key="resource.id" :href="resource.url" target="_blank" rel="noopener noreferrer" class="resource-card">
-          <div class="resource-icon-container">
-            <font-awesome-icon :icon="['fas', resource.icon]" />
-          </div>
-          <div class="resource-text">
-            <h4 class="resource-title">{{ resource.title }}</h4>
-            <p v-if="resource.description" class="resource-description">{{ resource.description }}</p>
-          </div>
-          <span class="resource-type-badge">{{ resource.type }}</span>
-        </a>
-      </div>
-    </section>
-
-    <section class="report-actions">
-      <button class="form-button secondary-button">
-        <font-awesome-icon :icon="['fas', 'download']" /> Download Report (PDF)
-      </button>
-      <router-link :to="{ name: 'InterviewSetup' }" class="form-button">
-        <font-awesome-icon :icon="['fas', 'calendar-plus']" /> Schedule Another Practice
-      </router-link>
-    </section>
+    <ReportActionsSection @download-report="handleDownloadReport" />
 
   </div>
   <div v-else class="report-view-loading">
-    <p>Loading report data...</p> </div>
+    <div class="spinner"><div></div><div></div><div></div><div></div></div> <p>正在加载报告数据...</p>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
-import { useInterviewSetupStore, ALL_POSSIBLE_PHASES } from '../../stores/interviewSetup'; // For phase names
-import type { InterviewReport, CoreAbilityScore, KeyMoment, PhaseBreakdown, RecommendedResource, PhaseMetric } from '../../types/reportTypes'; // Import types
-// Chart.js imports
-import { Radar } from 'vue-chartjs';
-import { Chart as ChartJS, RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, Title } from 'chart.js';
-// import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { useInterviewSetupStore, ALL_POSSIBLE_PHASES } from '@/stores/interviewSetup';
+import type { InterviewReport, CoreAbilityScore, KeyMoment, PhaseBreakdown, RecommendedResource, PhaseMetric } from '@/types/reportTypes';
 
-ChartJS.register(RadialLinearScale, PointElement, LineElement, Filler, Tooltip, Legend, Title);
+// Child components
+import ReportHeader from '../../components/report/ReportHeader.vue';
+import ReportOverallSummary from '../../components/report/ReportOverallSummary.vue';
+import CoreAbilitiesRadarChart from '../../components/report/CoreAbilitiesRadarChart.vue';
+import ReportTabs, { type TabDefinition } from '../../components/report/ReportTabs.vue';
+import ReportPhaseBreakdownContent from '../../components/report/ReportPhaseBreakdownContent.vue';
+import ReportKeyMomentsContent from '../../components/report/ReportKeyMomentsContent.vue';
+import ReportCoreAbilitiesDetailContent from '../../components/report/ReportCoreAbilitiesDetailContent.vue';
+import VideoPlaybackSection from '../../components/report/VideoPlaybackSection.vue';
+import RecommendedResourcesSection from '../../components/report/RecommendedResourcesSection.vue';
+import ReportActionsSection from '../../components/report/ReportActionsSection.vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'; // Only if used directly in this parent
 
 const route = useRoute();
-const setupStore = useInterviewSetupStore(); // To get labels and phase definitions
+const setupStore = useInterviewSetupStore();
 
 const reportData = ref<InterviewReport | null>(null);
-const activeTab = ref<'phaseBreakdown' | 'keyMoments' | 'coreAbilitiesDetail'>('phaseBreakdown'); // Default tab
+const activeTab = ref<'phaseBreakdown' | 'keyMoments' | 'coreAbilitiesDetail'>('phaseBreakdown');
+const mockVideoUrl = ref<string | undefined>(undefined); // ref(''); // Example: 'your_video_url.mp4' or leave undefined for placeholder
 
-const chartData = computed(() => {
-  if (!reportData.value) return { labels: [], datasets: [] };
-  return {
-    labels: reportData.value.coreAbilities.map(ab => ab.name),
-    datasets: [
-      {
-        label: 'Your Performance',
-        data: reportData.value.coreAbilities.map(ab => ab.score),
-        backgroundColor: 'rgba(59, 130, 246, 0.2)', // primary-color with alpha
-        borderColor: 'rgba(59, 130, 246, 1)', // primary-color
-        borderWidth: 2,
-        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
-        pointBorderColor: '#fff',
-        pointHoverBackgroundColor: '#fff',
-        pointHoverBorderColor: 'rgba(59, 130, 246, 1)',
-      }
-    ]
-  };
-});
+const feedbackTabs = ref<TabDefinition[]>([
+  { id: 'phaseBreakdown', label: '按阶段表现', icon: ['fas', 'layer-group'] },
+  { id: 'keyMoments', label: '关键时刻与建议', icon: ['fas', 'star'] },
+  { id: 'coreAbilitiesDetail', label: '核心能力详情', icon: ['fas', 'tasks'] },
+]);
 
-const chartOptions = ref({
-  responsive: true,
-  maintainAspectRatio: false,
-  scales: {
-    r: {
-      angleLines: { display: true, color: 'rgba(255, 255, 255, 0.2)' }, // For dark theme
-      grid: { color: 'rgba(255, 255, 255, 0.2)' }, // For dark theme
-      pointLabels: {
-        font: { size: 12 },
-        color: 'var(--text-color)' // Use CSS variable for text color
-      },
-      ticks: {
-        backdropColor: 'transparent', // transparent background for ticks
-        color: 'var(--text-color-muted)', // Muted text color for ticks
-        stepSize: 20, // Score steps (0, 20, 40, 60, 80, 100)
-        font: { size: 10 }
-      },
-      suggestedMin: 0,
-      suggestedMax: 100,
-    }
-  },
-  plugins: {
-    legend: {
-      position: 'top' as const,
-      labels: { color: 'var(--text-color)' }
-    },
-    title: {
-      display: false,
-      text: 'Core Abilities Radar',
-      color: 'var(--text-color)'
-    },
-    tooltip: {
-      callbacks: {
-        label: function(context: any) {
-          let label = context.dataset.label || '';
-          if (label) {
-            label += ': ';
-          }
-          if (context.parsed.r !== null) {
-            label += context.parsed.r;
-          }
-          return label;
-        }
-      }
-    }
-  }
-});
-
-
-const generateMockReport = (sessionId: string): InterviewReport => {
-  // Use setupStore to get info about the interview that was set up
-  // This assumes setupStore still holds the data for this sessionId (good for mock, real app would fetch)
-  const jobFieldLabel = setupStore.getJobFieldLabel || 'N/A';
-  const experienceLevelLabel = setupStore.getExperienceLevelLabel || 'N/A';
+const generateMockReport = (sessionId: string): InterviewReport => { /* ... (same as before, ensure all text is Chinese) ... */
+  const jobFieldLabel = setupStore.getJobFieldLabel || '通用岗位';
+  const experienceLevelLabel = setupStore.getExperienceLevelLabel || '未指定级别';
   const selectedPhaseIdsFromSetup = setupStore.selectedPhaseIds;
 
-
-  // --- Core Abilities (as per 赛项书) ---
   const coreAbilitiesData: CoreAbilityScore[] = [
-    { id: 'professionalKnowledge', name: 'Professional Knowledge', score: Math.floor(Math.random() * 40) + 60, description: "Depth and breadth of technical expertise relevant to the role." },
-    { id: 'skillsMatch', name: 'Skills Match', score: Math.floor(Math.random() * 40) + 55, description: "Alignment of your skills and experiences with job requirements." },
-    { id: 'languageExpression', name: 'Language Expression', score: Math.floor(Math.random() * 30) + 50, description: "Clarity, conciseness, and fluency of verbal communication." },
-    { id: 'logicalThinking', name: 'Logical Thinking', score: Math.floor(Math.random() * 35) + 60, description: "Ability to structure thoughts, analyze problems, and form coherent arguments." },
-    { id: 'innovation', name: 'Innovation & Creativity', score: Math.floor(Math.random() * 30) + 45, description: "Capacity to generate novel ideas and solutions." },
-    { id: 'stressResistance', name: 'Stress Resistance & Adaptability', score: Math.floor(Math.random() * 30) + 50, description: "Composure under pressure and ability to adapt to changing situations." },
+    { id: 'professionalKnowledge', name: '专业知识', score: Math.floor(Math.random() * 30) + 65, description: "与职位相关的技术知识广度和深度。" },
+    { id: 'skillsMatch', name: '技能匹配', score: Math.floor(Math.random() * 30) + 60, description: "个人技能与岗位需求的契合程度。" },
+    { id: 'languageExpression', name: '语言表达', score: Math.floor(Math.random() * 35) + 55, description: "沟通的清晰度、流畅性及逻辑性。" },
+    { id: 'logicalThinking', name: '逻辑思维', score: Math.floor(Math.random() * 30) + 60, description: "分析问题、构建论点和结构化思考的能力。" },
+    { id: 'innovation', name: '创新应变', score: Math.floor(Math.random() * 30) + 50, description: "提出新颖解决方案及适应变化的能力。" },
+    { id: 'stressResistance', name: '抗压能力', score: Math.floor(Math.random() * 30) + 55, description: "在压力环境下保持冷静和有效工作的能力。" },
   ];
-
-  // --- Phase Breakdown ---
   const phaseBreakdownData: PhaseBreakdown[] = selectedPhaseIdsFromSetup.map(phaseId => {
     const phaseDef = ALL_POSSIBLE_PHASES.find(p => p.id === phaseId);
-    const metrics: PhaseMetric[] = [];
-    let strengths: string[] = [];
-    let areas: string[] = [];
-
-    // Mock metrics based on phase type
+    const metrics: PhaseMetric[] = []; let strengths: string[] = []; let areas: string[] = [];
     if (phaseId === 'selfIntro' || phaseId === 'projectDiscussion') {
-      metrics.push({ name: 'Clarity', score: Math.floor(Math.random() * 30) + 60, feedback: 'Generally clear, could be more concise.' });
-      metrics.push({ name: 'Confidence', score: Math.floor(Math.random() * 30) + 55, feedback: 'Appeared reasonably confident.' });
-      metrics.push({ name: 'STAR Method (Projects)', score: Math.floor(Math.random() * 40) + 50, feedback: 'Consider using STAR for project descriptions more consistently.' });
-      strengths.push("Good articulation of past roles.");
-      areas.push("Provide more quantifiable results in project examples.");
+      metrics.push({ name: '表达清晰度', score: Math.floor(Math.random() * 25) + 65, feedback: '表达基本清晰，部分内容可以更精炼。' });
+      strengths.push("对过往经历的阐述较为流畅。"); areas.push("在项目成果方面提供更多可量化的数据。");
     } else if (phaseId === 'techQA') {
-      metrics.push({ name: 'Correctness', score: Math.floor(Math.random() * 40) + 60, feedback: 'Most technical answers were accurate.' });
-      metrics.push({ name: 'Explanation Depth', score: Math.floor(Math.random() * 35) + 55, feedback: 'Could elaborate more on certain concepts.' });
-      metrics.push({ name: 'Problem Solving Approach', score: Math.floor(Math.random() * 30) + 60, feedback: 'Logical approach to hypothetical technical problems.' });
-      strengths.push("Solid understanding of core technical concepts.");
-      areas.push("Practice explaining complex topics in simpler terms.");
+      metrics.push({ name: '答案准确性', score: Math.floor(Math.random() * 30) + 65, feedback: '多数技术问题回答准确。' });
+      strengths.push("对核心技术概念有较好理解。"); areas.push("练习用更简洁的方式解释复杂技术点。");
     } else if (phaseId === 'codingExercise') {
-      metrics.push({ name: 'Logic & Approach', score: Math.floor(Math.random() * 40) + 50, feedback: 'The approach to the coding problem was sound.' });
-      metrics.push({ name: 'Code Clarity/Readability', score: Math.floor(Math.random() * 30) + 55, feedback: 'Code structure could be cleaner.' });
-      metrics.push({ name: 'Efficiency (Big O)', score: Math.floor(Math.random() * 30) + 45, feedback: 'Consider time/space complexity more explicitly.' });
-      strengths.push("Good attempt at solving the problem under time pressure.");
-      areas.push("Review common data structures for optimal solutions.");
+      metrics.push({ name: '逻辑与方法', score: Math.floor(Math.random() * 35) + 55, feedback: '编程问题的解决思路基本合理。' });
+      strengths.push("在时间压力下完成了题目。"); areas.push("注意代码规范和边界条件处理。");
     } else if (phaseId === 'behavioral' || phaseId === 'futureAspirations') {
-      metrics.push({ name: 'Relevance of Examples', score: Math.floor(Math.random() * 30) + 65, feedback: 'Provided relevant examples for behavioral questions.' });
-      metrics.push({ name: 'Authenticity', score: Math.floor(Math.random() * 25) + 60, feedback: 'Responses felt genuine.' });
-      strengths.push("Clear articulation of career goals.");
-      areas.push("Ensure answers directly address the question asked.");
+      metrics.push({ name: '案例相关性', score: Math.floor(Math.random() * 25) + 65, feedback: '行为问题回答中能提供相关案例。' });
+      strengths.push("对职业规划有清晰的阐述。"); areas.push("确保回答直接针对所提问题，避免偏题。");
     }
-
     return {
-      phaseId: phaseId,
-      phaseName: phaseDef?.name || 'Unknown Phase',
-      overallPhaseScore: Math.floor(metrics.reduce((sum, m) => sum + m.score, 0) / Math.max(1, metrics.length)),
-      metrics: metrics,
-      strengths: strengths.length > 0 ? strengths : undefined,
-      areasForImprovement: areas.length > 0 ? areas : undefined,
+      phaseId: phaseId, phaseName: phaseDef?.name || '未知阶段',
+      overallPhaseScore: Math.floor(metrics.reduce((sum, m) => sum + m.score, 0) / Math.max(1, metrics.length)) || Math.floor(Math.random() * 20) + 70,
+      metrics: metrics.length > 0 ? metrics : [{name: '综合表现', score: Math.floor(Math.random()*20)+70, feedback: '该阶段表现整体符合预期。'}],
+      strengths: strengths.length > 0 ? strengths : undefined, areasForImprovement: areas.length > 0 ? areas : undefined,
     };
   });
-
-
-  // --- Key Moments ---
-  const keyMomentsData: KeyMoment[] = [
-    { timestampDisplay: "01:32 (Self Introduction)", observation: "Good energy and clear introduction of background.", isPositive: true },
-    { timestampDisplay: "05:12 (Technical Q&A - Question on REST APIs)", observation: "Slight hesitation when defining idempotency, but recovered well.", suggestion: "Review HTTP methods and their properties like idempotency.", isPositive: false },
-    { timestampDisplay: "12:45 (Coding Exercise - Palindrome Check)", observation: "Efficient two-pointer approach identified quickly.", isPositive: true, suggestion: "Remember to discuss edge cases (e.g., empty string, single character string) even if not explicitly asked." },
-    { timestampDisplay: "18:03 (Behavioral - Team Conflict)", observation: "Used STAR method effectively to describe the situation and resolution.", isPositive: true },
+  const keyMomentsData: KeyMoment[] = [ /* ... ensure Chinese content ... */ ];
+  const filteredKeyMoments = keyMomentsData; /* ... ensure Chinese content ... */
+  const recommendedResourcesData: RecommendedResource[] = [ /* ... ensure Chinese content ... */
+    { id: 'res1', title: '高效行为面试技巧 (视频课程)', type: '课程', url: '#', icon: 'graduation-cap', description: "学习高级技巧，轻松应对行为面试问题。" },
+    { id: 'res2', title: '技术面试手册 (在线资源)', type: '文章', url: '#', icon: 'book-open', description: "全面覆盖常见技术面试主题的指南。" },
   ];
-  // Filter key moments based on actual phases included
-  const filteredKeyMoments = keyMomentsData.filter(moment => {
-    const phaseNameInTimestamp = moment.timestampDisplay.substring(moment.timestampDisplay.indexOf('(') + 7, moment.timestampDisplay.indexOf(')'));
-    return selectedPhaseIdsFromSetup.some(id => ALL_POSSIBLE_PHASES.find(p => p.id === id)?.name.includes(phaseNameInTimestamp) || ALL_POSSIBLE_PHASES.find(p => p.id === id)?.shortName.includes(phaseNameInTimestamp) );
-  });
-
-
-  // --- Recommended Resources ---
-  const recommendedResourcesData: RecommendedResource[] = [
-    { id: 'res1', title: 'Mastering Behavioral Interviews (Video Course)', type: 'course', url: '#', icon: 'graduation-cap', description: "Learn advanced techniques for acing behavioral questions." },
-    { id: 'res2', title: 'Technical Interview Handbook (Online Resource)', type: 'article', url: '#', icon: 'book-open', description: "Comprehensive guide covering common tech interview topics." },
-    { id: 'res3', title: 'LeetCode Daily Challenge (Practice Tool)', type: 'tool', url: '#', icon: 'code', description: "Sharpen your coding skills with daily problems." },
-  ];
-
-  return {
-    sessionId: sessionId,
-    interviewJobFieldLabel: jobFieldLabel,
-    interviewExperienceLevelLabel: experienceLevelLabel,
-    interviewDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+  return { /* ... (rest of the return object, ensure overallSummaryText is Chinese) ... */
+    sessionId: sessionId, interviewJobFieldLabel: jobFieldLabel, interviewExperienceLevelLabel: experienceLevelLabel,
+    interviewDate: new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' }),
     overallScore: Math.floor(coreAbilitiesData.reduce((sum, ab) => sum + ab.score, 0) / coreAbilitiesData.length),
-    overallSummaryText: `Good performance overall in the ${jobFieldLabel} (${experienceLevelLabel}) mock interview. Key strengths include [mock strength area]. Areas to focus on include [mock improvement area for better results].`,
-    coreAbilities: coreAbilitiesData,
-    keyMoments: filteredKeyMoments.slice(0, Math.floor(Math.random()*2)+2), // Show 2-3 relevant moments
+    overallSummaryText: `在 ${jobFieldLabel} (${experienceLevelLabel}) 的模拟面试中表现良好。主要优点包括专业知识扎实、逻辑思维清晰。建议在语言表达的流畅性和案例阐述的结构性方面进一步提升，以取得更好的面试效果。`,
+    coreAbilities: coreAbilitiesData, keyMoments: filteredKeyMoments.slice(0, Math.floor(Math.random()*2)+2),
     phaseBreakdown: phaseBreakdownData,
-    // videoUrl: '#', // Placeholder
-    recommendedResources: recommendedResourcesData.slice(0, Math.floor(Math.random()*2)+1), // Show 1-2 resources
+    recommendedResources: recommendedResourcesData.slice(0, Math.floor(Math.random()*2)+1),
     selectedPhaseIds: selectedPhaseIdsFromSetup,
   };
 };
 
+const handleDownloadReport = () => {
+  // Logic for downloading report (e.g., using jsPDF or calling a backend endpoint)
+  console.log("（模拟）下载报告...");
+  alert("（模拟功能）报告下载功能暂未实现。");
+};
+
 onMounted(() => {
   const sessionId = route.params.sessionId as string;
-  // Simulate fetching/generating report data
   reportData.value = generateMockReport(sessionId);
-
-  // Update chart options for current theme dynamically
-  const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-  const textColor = currentTheme === 'dark' ? 'rgba(224, 224, 224, 0.8)' : 'rgba(44, 62, 80, 0.8)';
-  const gridColor = currentTheme === 'dark' ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.1)';
-
-  chartOptions.value = {
-    ...chartOptions.value,
-    scales: {
-      r: {
-        ...chartOptions.value.scales.r,
-        angleLines: { display: true, color: gridColor },
-        grid: { color: gridColor },
-        pointLabels: {
-          font: { size: 11 }, // Slightly smaller for more labels
-          color: textColor
-        },
-        ticks: {
-          ...chartOptions.value.scales.r.ticks,
-          color: currentTheme === 'dark' ? 'rgba(224,224,224,0.6)' : 'rgba(44,62,80,0.6)'
-        }
-      }
-    },
-    plugins: {
-      ...chartOptions.value.plugins,
-      legend: {
-        ...chartOptions.value.plugins?.legend,
-        labels: { color: textColor }
-      },
-      title: {
-        ...chartOptions.value.plugins?.title,
-        color: textColor
-      }
-    }
-  };
+  // If video URL were real and came from reportData:
+  // mockVideoUrl.value = reportData.value?.videoUrl;
 });
 </script>
 
 <style scoped>
-.report-view {
-  padding: 1.5rem 2rem;
-  max-width: 1000px; /* Consistent max-width */
-  margin: 0 auto;
-  color: var(--text-color);
+.report-view { padding: 1.5rem 2rem; max-width: 1000px; margin: 0 auto; color: var(--text-color); }
+.report-view-loading { text-align: center; padding: 3rem; font-size: 1.2rem; }
+.report-view-loading .spinner { /* Ensure spinner styles are available or copied here */
+  display: inline-block; position: relative; width: 60px; height: 60px; margin-bottom: 1rem;
 }
-.report-view-loading {
-  text-align: center; padding: 3rem; font-size: 1.2rem;
-}
+.report-view-loading .spinner div { box-sizing: border-box; display: block; position: absolute; width: 48px; height: 48px; margin: 6px; border: 4px solid var(--primary-color); border-radius: 50%; animation: spinner-animation 1.2s cubic-bezier(0.5, 0, 0.5, 1) infinite; border-color: var(--primary-color) transparent transparent transparent; }
+.report-view-loading .spinner div:nth-child(1) { animation-delay: -0.45s; }
+.report-view-loading .spinner div:nth-child(2) { animation-delay: -0.3s; }
+.report-view-loading .spinner div:nth-child(3) { animation-delay: -0.15s; }
+@keyframes spinner-animation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-.report-header {
-  margin-bottom: 2rem;
-  text-align: center;
-}
-.page-title {
-  font-size: 2rem;
-  font-weight: 700;
-  color: var(--text-color);
-  margin-bottom: 0.25rem;
-  display: inline-flex; align-items: center; gap: 0.75rem;
-}
-.page-title .fa-icon { color: var(--primary-color); }
 
-.report-subtitle {
-  font-size: 1rem;
-  color: var(--text-color);
-  opacity: 0.8;
-}
-
-.report-section {
+.detailed-feedback-section {
   background-color: var(--card-bg-color);
-  padding: 1.5rem;
+  padding: 0; /* ReportTabs component handles its own padding for the nav */
   border-radius: 8px;
   margin-bottom: 2rem;
   border: 1px solid var(--border-color);
   box-shadow: 0 3px 10px rgba(0,0,0,0.05);
 }
-[data-theme="dark"] .report-section {
+[data-theme="dark"] .detailed-feedback-section {
   box-shadow: 0 3px 10px rgba(0,0,0,0.15);
 }
-
-
-.section-title {
-  font-size: 1.5rem;
-  font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 1.5rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color);
+.tab-content-wrapper {
+  padding: 1.5rem; /* Inner padding for tab content */
 }
 
-.overall-summary-section .summary-card {
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-  flex-wrap: wrap;
-}
-.overall-score {
-  background-color: var(--primary-color);
-  color: white;
-  padding: 1.5rem;
-  border-radius: 8px;
-  text-align: center;
-  min-width: 150px;
-}
-.score-value {
-  font-size: 2.5rem;
-  font-weight: 700;
-  line-height: 1;
-}
-.score-value span {
-  font-size: 1rem;
-  opacity: 0.8;
-  font-weight: 500;
-}
-.score-label {
-  font-size: 0.9rem;
-  margin-top: 0.25rem;
-  opacity: 0.9;
-}
-.summary-text {
-  flex: 1;
-  font-size: 1rem;
-  line-height: 1.6;
-  min-width: 250px;
-}
-
-.radar-chart-section .chart-container {
-  height: 350px; /* Adjust as needed */
-  position: relative; /* For chart.js responsiveness */
-}
-@media (max-width: 600px) {
-  .radar-chart-section .chart-container {
-    height: 300px;
-  }
-  .chart-container .pointLabels { font-size: 10px !important; } /* Attempt to make labels smaller */
-}
-
-
-.tabs {
-  display: flex;
-  border-bottom: 2px solid var(--border-color);
-  margin-bottom: 1.5rem;
-}
-.tab-button {
-  padding: 0.75rem 1.25rem;
-  background: none;
-  border: none;
-  color: var(--text-color);
-  opacity: 0.7;
-  font-weight: 500;
-  font-size: 0.95rem;
-  cursor: pointer;
-  border-bottom: 3px solid transparent;
-  margin-bottom: -2px; /* Align with parent border */
-  transition: color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-.tab-button:hover {
-  opacity: 1;
-  color: var(--primary-color);
-}
-.tab-button.active {
-  opacity: 1;
-  color: var(--primary-color);
-  border-bottom-color: var(--primary-color);
-  font-weight: 600;
-}
-
-.tab-content {
-  /* Styles for content area if needed */
-}
-
-.phase-breakdown-content .phase-card {
-  background-color: var(--bg-color); /* Slightly different bg for cards within tabs */
-  padding: 1.25rem;
-  border-radius: 6px;
-  margin-bottom: 1rem;
-  border: 1px solid var(--border-color);
-}
-.phase-name {
-  font-size: 1.2rem;
-  font-weight: 600;
-  margin-bottom: 1rem;
-  color: var(--primary-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.phase-score-badge {
-  font-size: 0.8rem;
-  font-weight: normal;
-  background-color: var(--primary-color);
-  color: white;
-  padding: 0.2em 0.6em;
-  border-radius: 1em;
-}
-
-
-.phase-metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.metric-item {
-  background-color: var(--card-bg-color);
-  padding: 0.75rem;
-  border-radius: 4px;
-  border-left: 3px solid var(--primary-color);
-}
-.metric-name { font-weight: 500; font-size: 0.9rem; margin-bottom: 0.25rem; }
-.metric-score { font-weight: bold; color: var(--primary-color); }
-.metric-feedback { font-size: 0.85rem; opacity: 0.8; line-height: 1.5; }
-
-.strengths-list, .improvements-list { margin-top: 0.75rem; }
-.strengths-list strong, .improvements-list strong { font-size: 0.9rem; display: block; margin-bottom: 0.25rem;}
-.strengths-list ul, .improvements-list ul { list-style: disc; padding-left: 1.25rem; font-size: 0.85rem; opacity: 0.9;}
-.strengths-list li { color: #28a745; } /* Green for strengths */
-[data-theme="dark"] .strengths-list li { color: #68d391; }
-.improvements-list li { color: #e53e3e; } /* Red for improvements */
-[data-theme="dark"] .improvements-list li { color: #fc8181; }
-
-
-.key-moments-content .key-moment-item {
-  display: flex;
-  gap: 1rem;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
-  background-color: var(--bg-color);
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-}
-.key-moment-item:last-child { border-bottom: none; }
-.moment-icon { font-size: 1.25rem; padding-top: 0.2rem; }
-.key-moment-item.positive .moment-icon { color: #28a745; } /* Green */
-[data-theme="dark"] .key-moment-item.positive .moment-icon { color: #68d391; }
-.key-moment-item.improvement .moment-icon { color: #e53e3e; } /* Red */
-[data-theme="dark"] .key-moment-item.improvement .moment-icon { color: #fc8181; }
-
-.moment-timestamp { font-size: 0.8rem; opacity: 0.7; margin-bottom: 0.25rem; font-weight: 500;}
-.moment-observation { font-size: 0.95rem; margin-bottom: 0.35rem; line-height: 1.5;}
-.moment-suggestion { font-size: 0.9rem; opacity: 0.9; line-height: 1.5;}
-.moment-suggestion strong { font-weight: 500; color: var(--primary-color); }
-
-.core-abilities-detail-content .ability-detail-item {
-  padding: 1rem;
-  margin-bottom: 0.75rem;
-  background-color: var(--bg-color);
-  border-radius: 4px;
-  border-left: 3px solid var(--primary-color);
-}
-.ability-detail-item h4 { font-size: 1.1rem; font-weight: 600; margin-bottom: 0.3rem; }
-.ability-detail-item p { font-size: 0.9rem; opacity: 0.8; line-height: 1.5; }
-.score-value-small { font-size: 0.9em; color: var(--primary-color); font-weight: bold;}
-
-
-.video-playback-section .video-placeholder {
-  background-color: #000;
-  aspect-ratio: 16 / 9;
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #777;
-  border: 1px solid var(--border-color);
-}
-.video-placeholder .play-icon {
-  font-size: 3rem;
-  color: rgba(255,255,255,0.7);
-  margin-bottom: 0.5rem;
-  cursor: pointer;
-}
-.video-placeholder p { font-size: 0.9rem; }
-
-
-.resources-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1rem;
-}
-.resource-card {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background-color: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  text-decoration: none;
-  color: var(--text-color);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-  position: relative;
-}
-.resource-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-}
-[data-theme="dark"] .resource-card:hover {
-  box-shadow: 0 6px 12px rgba(0,0,0,0.2);
-}
-
-.resource-icon-container {
-  background-color: var(--primary-color-translucent, color-mix(in srgb, var(--primary-color) 15%, transparent));
-  color: var(--primary-color);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  font-size: 1.1rem;
-}
-.resource-text { flex-grow: 1; }
-.resource-title { font-weight: 600; font-size: 0.95rem; margin-bottom: 0.2rem; }
-.resource-description { font-size: 0.8rem; opacity: 0.7; line-height: 1.4; }
-.resource-type-badge {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  font-size: 0.7rem;
-  background-color: var(--border-color);
-  padding: 0.15rem 0.4rem;
-  border-radius: 0.25rem;
-  text-transform: capitalize;
-}
-
-.report-actions {
-  margin-top: 2rem;
-  display: flex;
-  gap: 1rem;
-  justify-content: center; /* Center buttons */
-  flex-wrap: wrap;
-}
-.report-actions .form-button {
-  /* Reuses global form-button styling or define specific ones */
-  padding: 0.75rem 1.5rem;
-  font-size: 0.95rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 200px;
-  justify-content: center;
-}
-.report-actions .form-button.secondary-button {
-  background-color: var(--card-bg-color);
-  color: var(--text-color);
-  border: 1px solid var(--primary-color);
-}
-.report-actions .form-button.secondary-button:hover {
-  background-color: color-mix(in srgb, var(--border-color) 50%, var(--card-bg-color) 50%);
-}
+/* Styles for sections that were previously .original-section-style are now inside their components */
+/* Ensure global .form-button and .secondary-button styles are available for ReportActionsSection */
 </style>

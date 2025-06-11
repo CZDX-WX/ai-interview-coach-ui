@@ -1,60 +1,65 @@
 <template>
   <div class="register-view form-container">
-    <h2 class="form-title">Create Your Account</h2>
+    <h2 class="form-title">创建您的账户</h2>
     <form @submit.prevent="handleRegister" class="auth-form">
-      <div v-if="authStore.error && !authStore.isLoading" class="error-message">
+      <div v-if="registerError" class="message error">
+        {{ registerError }}
+      </div>
+      <div v-else-if="authStore.error && !authStore.isLoading" class="message error">
         {{ authStore.error }}
       </div>
 
       <div class="form-group">
-        <label for="email">Student ID / Email</label>
-        <input id="email" type="email" v-model="email" placeholder="Enter your student ID or email" required class="form-input"/>
+        <label for="reg_username">用户名</label>
+        <input id="reg_username" type="text" v-model="registerData.username" placeholder="3-50个字符，可包含字母、数字" required class="form-input"/>
       </div>
       <div class="form-group">
-        <label for="name">Name</label>
-        <input id="name" type="text" v-model="name" placeholder="Enter your full name" required class="form-input"/>
+        <label for="reg_email">电子邮箱</label>
+        <input id="reg_email" type="email" v-model="registerData.email" placeholder="请输入您的常用邮箱" required class="form-input"/>
       </div>
       <div class="form-group">
-        <label for="major">Major</label>
-        <select id="major" v-model="major" required class="form-input">
-          <option disabled value="">Select your major</option>
-          <option value="Computer Science">Computer Science</option>
-          <option value="Software Engineering">Software Engineering</option>
-          <option value="Data Science">Data Science</option>
-          <option value="AI & Machine Learning">AI & Machine Learning</option>
-          <option value="IoT">Internet of Things</option>
-          <option value="Other">Other</option>
+        <label for="reg_fullName">姓名/昵称</label>
+        <input id="reg_fullName" type="text" v-model="registerData.fullName" placeholder="请输入您的真实姓名或昵称" required class="form-input"/>
+      </div>
+      <div class="form-group">
+        <label for="reg_major">专业</label>
+        <select id="reg_major" v-model="registerData.major" required class="form-input select-input">
+          <option disabled value="">选择您的专业</option>
+          <option value="计算机科学与技术">计算机科学与技术</option>
+          <option value="软件工程">软件工程</option>
+          <option value="数据科学与大数据技术">数据科学与大数据技术</option>
+          <option value="人工智能">人工智能</option>
+          <option value="物联网工程">物联网工程</option>
+          <option value="产品管理">产品管理</option>
+          <option value="工商管理">工商管理</option>
+          <option value="其他">其他</option>
         </select>
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
-        <input id="password" type="password" v-model="password" placeholder="Create a password" required class="form-input"/>
-        <div v-if="password.length > 0" class="password-strength-indicator">
-          <div :style="{ width: passwordStrengthPercentage + '%', backgroundColor: passwordStrengthColor }" class="strength-bar"></div>
-        </div>
-        <p v-if="password.length > 0" class="strength-text">{{ passwordStrengthText }}</p>
+        <label for="reg_password">密码</label>
+        <input id="reg_password" type="password" v-model="passwordFields.password" placeholder="创建密码 (至少6位)" required class="form-input"/>
       </div>
       <div class="form-group">
-        <label for="confirmPassword">Confirm Password</label>
-        <input id="confirmPassword" type="password" v-model="confirmPassword" placeholder="Confirm your password" required class="form-input"/>
-        <p v-if="password && confirmPassword && password !== confirmPassword" class="error-text-field">Passwords do not match.</p>
+        <label for="reg_confirmPassword">确认密码</label>
+        <input id="reg_confirmPassword" type="password" v-model="passwordFields.confirmPassword" placeholder="请再次输入密码" required class="form-input"/>
       </div>
 
-      <button type="submit" class="form-button" :disabled="authStore.isLoading || password !== '' && password !== confirmPassword">
-        <span v-if="authStore.isLoading">Creating Account...</span>
-        <span v-else>Sign Up</span>
+      <button type="submit" class="form-button primary-button" :disabled="authStore.isLoading">
+        <span v-if="authStore.isLoading">注册中...</span>
+        <span v-else>注 册</span>
       </button>
     </form>
     <p class="form-switch-link">
-      Already have an account? <router-link to="/login">Log In</router-link>
+      已有账户？ <router-link :to="{ name: 'Login' }">立即登录</router-link>
     </p>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import {ref, computed, reactive} from 'vue';
 import { useRouter } from 'vue-router';
-import { useAuthStore } from '../../stores/auth';
+import { useAuthStore } from '@/stores/auth';
+import {RegisterRequest} from "@/types/apiTypes";
 
 const email = ref('');
 const name = ref('');
@@ -62,48 +67,72 @@ const major = ref('');
 const password = ref('');
 const confirmPassword = ref('');
 
+
 const authStore = useAuthStore();
 const router = useRouter();
 
+const registerData = reactive<Omit<RegisterRequest, 'password'>>({
+  username: '',
+  email: '',
+  fullName: '',
+  major: ''
+});
+const passwordFields = reactive({
+  password: '',
+  confirmPassword: ''
+});
+
+const registerError = ref<string | null>(null);
+
 const handleRegister = async () => {
-  if (password.value !== confirmPassword.value) {
-    authStore.error = "Passwords do not match."; // Set error in store or local ref
+  registerError.value = null;
+  if (passwordFields.password !== passwordFields.confirmPassword) {
+    registerError.value = "两次输入的密码不匹配。";
     return;
   }
-  const success = await authStore.register({
-    email: email.value,
-    name: name.value,
-    major: major.value,
-    password: password.value,
-  });
+  if (passwordFields.password.length < 6) {
+    registerError.value = "密码长度至少需要6位。";
+    return;
+  }
+
+  const payload: RegisterRequest = {
+    ...registerData,
+    password: passwordFields.password
+  };
+
+  const success = await authStore.register(payload);
   if (success) {
-    router.push('/'); // Navigate to home or dashboard
+    alert('注册成功！现在您可以去登录了。'); // 提示用户
+    await router.push({name: 'Login'}); // 导航到登录页
+  } else {
+    // authStore.error 会被模板中的 v-if 显示出来
+    registerError.value = authStore.error; // 也可以用本地变量显示
   }
 };
 
-// Basic Password Strength Logic (can be expanded)
-const passwordStrength = computed(() => {
-  let strength = 0;
-  if (password.value.length >= 8) strength++;
-  if (password.value.match(/[a-z]/)) strength++;
-  if (password.value.match(/[A-Z]/)) strength++;
-  if (password.value.match(/[0-9]/)) strength++;
-  if (password.value.match(/[^a-zA-Z0-9]/)) strength++; // Special character
-  return strength;
+const passwordStrength = computed(() => { /* ... (逻辑不变) ... */
+  let strength = 0; if (!password.value) return 0;
+  if (password.value.length >= 8) strength++; else if (password.value.length >=6) strength += 0.5;
+  if (password.value.match(/[a-z]/)) strength++; if (password.value.match(/[A-Z]/)) strength++;
+  if (password.value.match(/[0-9]/)) strength++; if (password.value.match(/[^a-zA-Z0-9\s]/)) strength++;
+  return Math.min(strength, 5);
 });
-
 const passwordStrengthPercentage = computed(() => (passwordStrength.value / 5) * 100);
-const passwordStrengthText = computed(() => {
-  if (passwordStrength.value <= 2) return 'Weak';
-  if (passwordStrength.value <= 4) return 'Medium';
-  return 'Strong';
+const passwordStrengthText = computed(() => { // 中文化
+  if (!password.value) return '';
+  const strengthVal = passwordStrength.value;
+  if (strengthVal <= 1.5) return '非常弱';
+  if (strengthVal <= 2.5) return '弱';
+  if (strengthVal <= 3.5) return '中等';
+  if (strengthVal <= 4.5) return '强';
+  return '非常强';
 });
-const passwordStrengthColor = computed(() => {
-  if (passwordStrength.value <= 2) return '#ff4d4f'; // Red
-  if (passwordStrength.value <= 4) return '#faad14'; // Orange/Yellow
-  return '#52c41a'; // Green
+const passwordStrengthColor = computed(() => { /* ... (颜色逻辑不变) ... */
+  if (!password.value) return 'transparent'; const strengthVal = passwordStrength.value;
+  if (strengthVal <= 1.5) return '#ef4444'; if (strengthVal <= 2.5) return '#f97316';
+  if (strengthVal <= 3.5) return '#eab308'; if (strengthVal <= 4.5) return '#84cc16';
+  return '#22c55e';
 });
-
 </script>
 
 <style scoped>

@@ -1,91 +1,80 @@
-// src/stores/interviewSession.ts
-import {defineStore} from 'pinia';
-import {useInterviewSetupStore, ALL_POSSIBLE_PHASES} from './interviewSetup';
-import type {ResumeInfo, PhaseDefinition} from './interviewSetup';
-
-export interface CodingProblemItem {
-    id: string;
-    title: string;
-    description: string; // Full problem statement, can include examples, constraints
-    jobField: string[]; // e.g., ['swe', 'swe_ai']
-    // difficulty?: 'easy' | 'medium' | 'hard';
+// src/stores/interviewSessionStore.ts
+import { defineStore } from 'pinia';
+import { useInterviewSetupStore, type ResumeInfo, type PhaseDefinition, ALL_POSSIBLE_PHASES } from './interviewSetup'; // Adjusted path
+interface CodingProblemTimer {
+    problemId: string;
+    startTime: number;
+    timeLimitSeconds: number; // e.g., 20 * 60
+    timeRemainingSeconds?: number; // For UI display, updated by component
+    timerId?: number; // To store setInterval/setTimeout ID
 }
 
-const MOCK_CODING_PROBLEMS_POOL: CodingProblemItem[] = [
-    {
-        id: 'cp_rev_str',
-        title: 'Reverse a String',
-        description: 'Write a function that reverses a string. The input string is given as an array of characters.\n\nExample:\nInput: ["h","e","l","l","o"]\nOutput: ["o","l","l","e","h"]\n\nConstraints:\n- Do not allocate extra space for another array. You must do this by modifying the input array in-place with O(1) extra memory.',
-        jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science', 'ops_qa']
-    },
-    {
-        id: 'cp_two_sum',
-        title: 'Two Sum',
-        description: 'Given an array of integers `nums` and an integer `target`, return indices of the two numbers such that they add up to `target`.\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\nYou can return the answer in any order.\n\nExample:\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].',
-        jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science']
-    },
-    {
-        id: 'cp_palindrome',
-        title: 'Palindrome Check',
-        description: 'Given a string, determine if it is a palindrome, considering only alphanumeric characters and ignoring cases.\n\nExample 1:\nInput: "A man, a plan, a canal: Panama"\nOutput: true\n\nExample 2:\nInput: "race a car"\nOutput: false',
-        jobField: ['swe', 'ops_qa']
-    },
-];
+// Interfaces for specific question types within this store
+export interface TechnicalQuestionItem {
+    id: string;
+    text: string; // 中文问题文本
+    jobField: string[];
+}
+export interface CodingProblemItem {
+    id: string;
+    title: string; // 中文标题
+    description: string; // 中文描述
+    jobField: string[];
+}
 
+// Active interview phase structure
 export interface InterviewPhase {
     id: string;
-    name: string;
-    shortName: string;
-    instructions: string; // General instruction for the phase
+    name: string; // 中文阶段名称
+    shortName: string; // 中文简称 (用于进度条等)
+    instructions: string; // 中文指示
     estimatedTime?: string;
-    questions?: string[]; // For Tech Q&A, or problem descriptions for Coding
-    codingProblems?: CodingProblemItem[]; // Specifically for coding problems
-    currentQuestionIndex?: number; // Used for both Tech Q&A and Coding problems
+    questions?: string[]; // 当前阶段加载的具体问题列表 (技术问答或编程题描述)
+    codingProblems?: CodingProblemItem[]; // If it's a coding phase, might store full objects
+    currentQuestionIndex?: number;
     totalQuestionsInPhase?: number;
 }
 
-interface TechnicalQuestionItem { // More structured technical question
-    id: string;
-    text: string;
-    jobField: string[]; // e.g., ['swe', 'swe_ai']
-    // category?: string; // e.g., 'Java', 'Python', 'Data Structures'
-    // difficulty?: 'easy' | 'medium' | 'hard';
-}
-
-// Mock data for technical questions - In a real app, this comes from a backend/DB
+// --- MOCK DATA (中文) ---
 const MOCK_TECHNICAL_QUESTIONS_POOL: TechnicalQuestionItem[] = [
-    {
-        id: 'gen_ds1',
-        text: 'What is the difference between an array and a linked list?',
-        jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science']
-    },
-    {
-        id: 'gen_algo1',
-        text: 'Explain Big O notation with an example.',
-        jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science']
-    },
-    {id: 'swe_os1', text: 'What is a deadlock and how can it be prevented?', jobField: ['swe', 'swe_ai', 'swe_iot']},
-    {id: 'swe_db1', text: 'Explain the concept of database normalization.', jobField: ['swe', 'swe_big_data']},
-    {id: 'swe_web1', text: 'Describe the request-response cycle in a typical web application.', jobField: ['swe']},
-    {id: 'ai_ml1', text: 'What are precision and recall? How are they related?', jobField: ['swe_ai', 'data_science']},
-    {
-        id: 'ai_dl1',
-        text: 'Explain the vanishing gradient problem in deep neural networks.',
-        jobField: ['swe_ai', 'data_science']
-    },
-    {id: 'bigdata_mapreduce1', text: 'What is MapReduce?', jobField: ['swe_big_data', 'data_science']},
-    {id: 'iot_arch1', text: 'Describe a common architecture for an IoT system.', jobField: ['swe_iot']},
-    {id: 'pm_userstory1', text: 'How do you write an effective user story?', jobField: ['product_management']},
-    {id: 'pm_metrics1', text: 'What are pirate metrics (AARRR)? Explain each.', jobField: ['product_management']},
-    {id: 'qa_types1', text: 'What are the different types of software testing?', jobField: ['ops_qa']},
+    { id: 'gen_ds1', text: '数组和链表的主要区别是什么？各自的优缺点？', jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science', 'ops_qa'] },
+    { id: 'gen_algo1', text: '请解释一下什么是时间复杂度和空间复杂度，并举例说明大O表示法。', jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science'] },
+    { id: 'swe_os1', text: '什么是进程和线程？它们之间有什么关系和区别？', jobField: ['swe', 'swe_ai', 'swe_iot'] },
+    { id: 'swe_db1', text: '请解释数据库范式，特别是第三范式 (3NF)。', jobField: ['swe', 'swe_big_data'] },
+    { id: 'swe_web1', text: '描述一下从用户在浏览器输入URL到看到页面的完整过程。', jobField: ['swe', 'swe_frontend', 'swe_backend'] },
+    { id: 'ai_ml1', text: '什么是监督学习和无监督学习？请各举一个例子。', jobField: ['swe_ai', 'data_science'] },
+    { id: 'ai_dl1', text: '解释一下深度学习中的梯度消失和梯度爆炸问题以及常见的解决方法。', jobField: ['swe_ai', 'data_science'] },
+    { id: 'bigdata_mapreduce1', text: 'MapReduce的工作原理是什么？它主要解决什么问题？', jobField: ['swe_big_data', 'data_science'] },
+    { id: 'iot_arch1', text: '请描述一个典型的物联网系统架构，包括哪些主要组成部分？', jobField: ['swe_iot', 'smart_systems_engineer'] },
+    { id: 'pm_userstory1', text: '如何编写一个有效的用户故事 (User Story)？包含哪些要素？', jobField: ['product_management']},
+    { id: 'pm_metrics1', text: '什么是AARRR海盗指标模型？请解释每个指标的含义。', jobField: ['product_management']},
+    { id: 'qa_types1', text: '软件测试有哪些主要类型？它们各自的目的是什么？', jobField: ['ops_qa']},
 ];
+
+const MOCK_CODING_PROBLEMS_POOL: CodingProblemItem[] = [
+    {
+        id: 'cp_rev_str_zh',
+        title: '反转字符串',
+        description: '编写一个函数，其作用是将输入的字符串反转过来。输入字符串以字符数组 char[] 的形式给出。\n\n不要给另外的数组分配额外的空间，你必须原地修改输入数组、使用 O(1) 的额外空间解决这一问题。\n\n示例：\n输入：s = ["h","e","l","l","o"]\n输出：["o","l","l","e","h"]',
+        jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science', 'ops_qa']
+    },
+    {
+        id: 'cp_two_sum_zh',
+        title: '两数之和',
+        description: '给定一个整数数组 nums 和一个整数目标值 target，请你在该数组中找出和为目标值 target 的那两个整数，并返回它们的数组下标。\n你可以假设每种输入只会对应一个答案。但是，数组中同一个元素在答案里不能重复出现。\n你可以按任意顺序返回答案。\n\n示例：\n输入：nums = [2,7,11,15], target = 9\n输出：[0,1]\n解释：因为 nums[0] + nums[1] == 9 ，返回 [0, 1] 。',
+        jobField: ['swe', 'swe_ai', 'swe_big_data', 'swe_iot', 'data_science']
+    },
+];
+// --- END MOCK DATA ---
 
 
 interface InterviewSessionState {
     sessionId: string | null;
     interviewType: {
-        jobField: string | null;
-        experienceLevel: string | null;
+        jobField: string | null; // value, e.g., 'swe_ai'
+        jobFieldLabel?: string; // Chinese label
+        experienceLevel: string | null; // value, e.g., 'entry'
+        experienceLevelLabel?: string; // Chinese label
         resume: ResumeInfo | null;
     } | null;
     currentPhaseIndex: number;
@@ -94,7 +83,10 @@ interface InterviewSessionState {
     overallStartTime: number | null;
     isRecording: boolean;
     isLoading: boolean;
-    currentQuestionText: string | null; // What is displayed to the user
+    currentQuestionText: string | null;
+    currentCodingProblemTimer: CodingProblemTimer | null;
+    userCodeSolutions: Record<string, { problemId: string; solution: string; phaseId: string, submittedAt?: number }>; // Added submittedAt
+    interviewStatus?: 'ongoing' | 'completed' | 'ended_early'; // 新增状态
 }
 
 export const useInterviewSessionStore = defineStore('interviewSession', {
@@ -108,6 +100,9 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
         isRecording: false,
         isLoading: false,
         currentQuestionText: null,
+        currentCodingProblemTimer: null,
+        userCodeSolutions: {},
+        interviewStatus: 'ongoing',
     }),
     getters: {
         currentPhase: (state): InterviewPhase | null => state.phases[state.currentPhaseIndex] || null,
@@ -128,7 +123,7 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
         canGoToNextTechnicalQuestion: (state): boolean => {
             const phase = state.phases[state.currentPhaseIndex];
             if (phase && phase.id === 'techQA' && phase.questions && phase.currentQuestionIndex !== undefined) {
-                return phase.currentQuestionIndex < phase.questions.length - 1;
+                return phase.currentQuestionIndex < phase.questions.length -1;
             }
             return false;
         },
@@ -144,16 +139,37 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
         canGoToNextCodingProblem: (state): boolean => {
             const phase = state.phases[state.currentPhaseIndex];
             if (phase && phase.id === 'codingExercise' && phase.codingProblems && phase.currentQuestionIndex !== undefined) {
-                return phase.currentQuestionIndex < phase.codingProblems.length - 1;
+                return phase.currentQuestionIndex < phase.codingProblems.length -1;
             }
             return false;
+        },
+        areAllSubQuestionsCompletedInCurrentPhase: (state): boolean => {
+            const phase = state.phases[state.currentPhaseIndex];
+            if (!phase) return true; // 如果没有当前阶段，视作完成（或错误状态）
+
+            if ((phase.id === 'techQA' && phase.questions) || (phase.id === 'codingExercise' && phase.codingProblems)) {
+                if (phase.currentQuestionIndex !== undefined && phase.totalQuestionsInPhase !== undefined) {
+                    return phase.currentQuestionIndex >= phase.totalQuestionsInPhase - 1;
+                }
+                return phase.totalQuestionsInPhase === 0; // 如果没有题目，也算完成
+            }
+            return true; // 对于没有子问题的阶段，总是视为“已完成子问题”
+        },
+        getCodingProblemTimeRemainingFormatted: (state): string => {
+            if (state.currentCodingProblemTimer && state.currentCodingProblemTimer.timeRemainingSeconds !== undefined) {
+                const totalSeconds = state.currentCodingProblemTimer.timeRemainingSeconds;
+                const minutes = Math.floor(totalSeconds / 60);
+                const seconds = totalSeconds % 60;
+                return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+            }
+            return '00:00';
         },
     },
     actions: {
         async startInterview(sessionId: string): Promise<boolean> {
             const setupStore = useInterviewSetupStore();
             if (!setupStore.selectedJobField || !setupStore.selectedExperienceLevel || setupStore.selectedPhaseIds.length === 0) {
-                console.error("Cannot start interview: job field, experience level, or phases missing.");
+                console.error("无法开始面试：缺少职位领域、经验水平或面试阶段信息。");
                 this.resetSession();
                 return false;
             }
@@ -161,7 +177,9 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
             this.sessionId = sessionId;
             this.interviewType = {
                 jobField: setupStore.selectedJobField,
+                jobFieldLabel: setupStore.getJobFieldLabel,
                 experienceLevel: setupStore.selectedExperienceLevel,
+                experienceLevelLabel: setupStore.getExperienceLevelLabel,
                 resume: setupStore.selectedResume,
             };
 
@@ -179,35 +197,28 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
                         phaseQuestions = MOCK_TECHNICAL_QUESTIONS_POOL
                             .filter(q => q.jobField.includes(setupStore.selectedJobField!))
                             .map(q => q.text)
-                            .slice(0, 5); // Limit to 5 questions
-                        if (phaseQuestions.length === 0) {
-                            phaseQuestions = MOCK_TECHNICAL_QUESTIONS_POOL.filter(q => q.jobField.includes('swe')).slice(0, 3).map(q => q.text);
+                            .slice(0, 5);
+                        if (phaseQuestions.length === 0) { // Fallback
+                            phaseQuestions = MOCK_TECHNICAL_QUESTIONS_POOL.filter(q=> q.jobField.includes('swe')).slice(0,3).map(q => q.text);
                         }
-                        if (phaseQuestions.length > 0) {
-                            currentIdx = 0;
-                            totalInPhase = phaseQuestions.length;
-                        }
+                        if (phaseQuestions.length > 0) { currentIdx = 0; totalInPhase = phaseQuestions.length; }
                     } else if (phaseDef.id === 'codingExercise') {
                         phaseCodingProblems = MOCK_CODING_PROBLEMS_POOL
                             .filter(p => p.jobField.includes(setupStore.selectedJobField!))
-                            .slice(0, 2); // Typically two problems
+                            .slice(0, 2);
                         if (phaseCodingProblems.length === 0) { // Fallback
-                            phaseCodingProblems = MOCK_CODING_PROBLEMS_POOL.filter(p => p.jobField.includes('swe')).slice(0, 2);
+                            phaseCodingProblems = MOCK_CODING_PROBLEMS_POOL.filter(p => p.jobField.includes('swe')).slice(0,2);
                         }
-                        if (phaseCodingProblems.length > 0) {
-                            currentIdx = 0;
-                            totalInPhase = phaseCodingProblems.length;
-                        }
+                        if (phaseCodingProblems.length > 0) { currentIdx = 0; totalInPhase = phaseCodingProblems.length; }
                     } else if (phaseDef.defaultQuestions) {
-                        phaseQuestions = [...phaseDef.defaultQuestions];
-                        // For non-cycling question phases like intro, we might not need currentQuestionIndex
+                        phaseQuestions = [...phaseDef.defaultQuestions]; // These should be Chinese already from ALL_POSSIBLE_PHASES
                     }
 
                     return {
                         id: phaseDef.id,
-                        name: phaseDef.name,
-                        shortName: phaseDef.shortName,
-                        instructions: phaseDef.defaultInstructions,
+                        name: phaseDef.name, // Chinese from ALL_POSSIBLE_PHASES
+                        shortName: phaseDef.shortName, // Chinese from ALL_POSSIBLE_PHASES
+                        instructions: phaseDef.defaultInstructions, // Chinese from ALL_POSSIBLE_PHASES
                         estimatedTime: phaseDef.defaultEstimatedTime,
                         questions: phaseQuestions,
                         codingProblems: phaseCodingProblems,
@@ -218,7 +229,7 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
                 .filter(p => p !== null) as InterviewPhase[];
 
             if (this.phases.length === 0) {
-                console.error("No valid phases constructed for the interview.");
+                console.error("未能为面试构建有效的阶段。");
                 this.resetSession();
                 return false;
             }
@@ -228,11 +239,11 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
             this.phaseStartTime = Date.now();
             this.isRecording = false;
             this.updateCurrentQuestionText();
-            console.log('Interview started:', this.sessionId, 'Phases:', this.phases.map(p => p.name));
+            this.userCodeSolutions = {}; // Reset solutions for new interview
+            console.log('面试已开始:', this.sessionId, '类型:', this.interviewType, '阶段:', this.phases.map(p => p.name));
             return true;
         },
 
-        // Modify updateCurrentQuestionText
         updateCurrentQuestionText() {
             const phase = this.currentPhase;
             if (phase) {
@@ -240,51 +251,57 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
                     this.currentQuestionText = phase.questions[phase.currentQuestionIndex];
                 } else if (phase.id === 'codingExercise' && phase.codingProblems && phase.codingProblems.length > 0 && phase.currentQuestionIndex !== undefined) {
                     const problem = phase.codingProblems[phase.currentQuestionIndex];
-                    this.currentQuestionText = `**${problem.title}**\n\n${problem.description}`; // Format for display
+                    this.currentQuestionText = `**${problem.title}**\n\n${problem.description}`;
                 } else {
-                    let baseInstruction = phase.instructions;
+                    let baseInstruction = phase.instructions; // Already Chinese
                     if (phase.questions && phase.questions.length === 1 && phase.id !== 'techQA' && phase.id !== 'codingExercise') {
-                        baseInstruction = `${phase.instructions} ${phase.questions[0]}`;
+                        baseInstruction = `${phase.instructions} ${phase.questions[0]}`; // Question also needs to be Chinese
                     }
                     this.currentQuestionText = baseInstruction;
                 }
             } else {
-                this.currentQuestionText = "Loading phase...";
+                this.currentQuestionText = "正在加载阶段信息...";
             }
         },
 
-        // Rename nextTechnicalQuestion to a more generic nextSubQuestion for reusability
-        nextSubQuestion() {
+        nextSubQuestion() { // Used by both Tech Q&A and Coding
             const phase = this.currentPhase;
             if (phase && phase.currentQuestionIndex !== undefined && phase.totalQuestionsInPhase !== undefined) {
                 if (phase.currentQuestionIndex < phase.totalQuestionsInPhase - 1) {
                     phase.currentQuestionIndex++;
                     this.updateCurrentQuestionText();
+                    if (phase.id === 'codingExercise') { // Clear previous code solution if moving to next problem
+                        // This would be better if solution was tied to problem ID in local component state
+                    }
                 } else {
-                    console.log(`All sub-questions for phase ${phase.name} completed.`);
-                    // UI will handle what to do next (e.g., enable "Next Phase")
+                    console.log(`阶段 ${phase.name} 内所有子问题已完成。`);
                 }
             }
         },
-
         async nextPhase() {
             if (this.currentPhaseIndex < this.phases.length - 1) {
                 this.currentPhaseIndex++;
                 this.phaseStartTime = Date.now();
-                // Reset technical question index if new phase is not techQA or is a new techQA phase
+                // 重置新阶段的子问题索引 (如果适用)
                 const newPhase = this.currentPhase;
-                if (newPhase && newPhase.id === 'techQA' && newPhase.questions && newPhase.questions.length > 0) {
+                if (newPhase && (newPhase.id === 'techQA' || newPhase.id === 'codingExercise') && newPhase.questions && newPhase.questions.length > 0) {
                     newPhase.currentQuestionIndex = 0;
                 }
                 this.updateCurrentQuestionText();
             } else {
-                await this.endInterview();
+                // 这是最后一个阶段，并且所有子问题已完成（通过按钮逻辑判断）
+                // 此时调用 endInterview(false) 表示正常完成
+                await this.endInterview(false); // 明确传递 false
             }
         },
-        async endInterview() {
-            console.log('Interview ended:', this.sessionId);
+
+        async endInterview(earlyExit: boolean = false) {
+            console.log(`面试已${earlyExit ? '提前' : '正常'}结束:`, this.sessionId);
             this.isRecording = false;
+            this.interviewStatus = earlyExit ? 'ended_early' : 'completed';
+            // 后续报告生成时可以参考 this.interviewStatus
         },
+
         resetSession() {
             this.sessionId = null;
             this.interviewType = null;
@@ -294,14 +311,51 @@ export const useInterviewSessionStore = defineStore('interviewSession', {
             this.overallStartTime = null;
             this.isRecording = false;
             this.currentQuestionText = null;
+            this.userCodeSolutions = {};
+            this.interviewStatus = 'ongoing'; // 重置状态
         },
-        submitCodingSolution(solution: string) { // New action
-            const phase = this.currentPhase;
-            if (phase && phase.id === 'codingExercise' && phase.codingProblems && phase.currentQuestionIndex !== undefined) {
-                const problem = phase.codingProblems[phase.currentQuestionIndex];
-                console.log(`Solution submitted for problem "${problem.title}":\n${solution}`);
-                // In a real app, send this to the backend.
-                // Decide if submitting automatically goes to next problem or if user clicks separately
+        startCodingProblemTimer(problemId: string, timeLimitMinutes: number = 20) { // Default 20 mins
+            if (this.currentCodingProblemTimer && this.currentCodingProblemTimer.timerId) {
+                clearTimeout(this.currentCodingProblemTimer.timerId); // Clear previous timer
+            }
+            const timeLimitSeconds = timeLimitMinutes * 60;
+            this.currentCodingProblemTimer = {
+                problemId,
+                startTime: Date.now(),
+                timeLimitSeconds,
+                timeRemainingSeconds: timeLimitSeconds,
+                // timerId will be set by the component that runs setInterval/setTimeout
+            };
+            console.log(`编程题 ${problemId} 计时开始，限时 ${timeLimitMinutes} 分钟。`);
+        },
+
+        updateCodingProblemTimeRemaining(remainingSeconds: number) {
+            if (this.currentCodingProblemTimer) {
+                this.currentCodingProblemTimer.timeRemainingSeconds = remainingSeconds;
+            }
+        },
+
+        clearCodingProblemTimer() {
+            if (this.currentCodingProblemTimer && this.currentCodingProblemTimer.timerId) {
+                clearTimeout(this.currentCodingProblemTimer.timerId);
+            }
+            this.currentCodingProblemTimer = null;
+        },
+        submitCodingSolution(solution: string, problemId?: string, phaseId?: string, submittedBy: 'user' | 'auto' = 'user') {
+            const currentProblemId = problemId || this.currentCodingProblemTimer?.problemId;
+            const currentPhaseId = phaseId || this.currentPhase?.id;
+
+            if (currentProblemId && currentPhaseId) {
+                this.userCodeSolutions[currentProblemId] = {
+                    problemId: currentProblemId,
+                    solution: solution,
+                    phaseId: currentPhaseId,
+                    submittedAt: Date.now(),
+                };
+                console.log(`问题 "${currentProblemId}" 的解答已由 (${submittedBy}) 提交:\n${solution}`);
+                this.clearCodingProblemTimer(); // Stop timer on any submission
+            } else {
+                console.error("无法提交编程解答：缺少题目ID或阶段ID。");
             }
         }
     },

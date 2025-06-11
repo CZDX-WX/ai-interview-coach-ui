@@ -5,7 +5,7 @@
         <svg class="logo-icon" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
           <path d="M6 6H42L36 24L42 42H6L12 24L6 6Z" fill="currentColor"></path>
         </svg>
-        <h2 class="logo-text">CareerPrep</h2>
+        <h2 class="logo-text">面试智能体</h2>
       </div>
       <nav class="auth-nav">
       </nav>

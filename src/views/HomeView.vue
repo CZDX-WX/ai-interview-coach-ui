@@ -1,325 +1,131 @@
 <template>
-  <div class="home-view-content"> <aside class="sidebar">
-    <nav class="sidebar-nav">
-      <router-link to="/" class="sidebar-link" active-class="active">
-        <font-awesome-icon :icon="['fas', 'house']" class="icon" />
-        <span>Home</span>
-      </router-link>
-      <router-link to="/practice" class="sidebar-link" active-class="active">
-        <font-awesome-icon :icon="['fas', 'briefcase']" class="icon" />
-        <span>Practice</span>
-      </router-link>
-      <router-link to="/history" class="sidebar-link" active-class="active">
-        <font-awesome-icon :icon="['fas', 'list-check']" class="icon" />
-        <span>History</span>
-      </router-link>
-      <router-link to="/learn" class="sidebar-link" active-class="active">
-        <font-awesome-icon :icon="['fas', 'graduation-cap']" class="icon" />
-        <span>Learn</span>
-      </router-link>
-      <router-link to="/discussion" class="sidebar-link" active-class="active">
-        <font-awesome-icon :icon="['fas', 'users']" class="icon" />
-        <span>Discussion</span>
-      </router-link>
-      <router-link to="/career-insights" class="sidebar-link" active-class="active">
-        <font-awesome-icon :icon="['fas', 'briefcase']" class="icon" />
-        <span>Jobs</span>
-      </router-link>
-    </nav>
-  </aside>
-
-    <main class="main-content-area">
-      <div class="welcome-header">
-        <h1>Welcome back, {{ authStore.currentUser?.name || 'User' }}!</h1>
-      </div>
-
-      <div class="action-buttons">
-        <router-link to="/interview-setup" class="action-button primary">
-          <font-awesome-icon :icon="['fas', 'play-circle']" /> Start New Interview
+  <div class="home-view">
+    <aside class="left-sidebar">
+      <nav class="sidebar-nav">
+        <router-link
+            v-for="link in mainNavLinks"
+            :key="link.name"
+            :to="{ name: link.name }"
+            class="sidebar-link"
+        >
+          <font-awesome-icon :icon="link.icon" class="link-icon" />
+          <span class="link-text">{{ link.title }}</span>
         </router-link>
-        <router-link to="/history" class="action-button secondary">
-          <font-awesome-icon :icon="['fas', 'history']" /> View All Interviews
-        </router-link>
-      </div>
+      </nav>
+    </aside>
 
-      <section class="content-section recent-performance">
-        <h2>Recent Performance</h2>
-        <div class="performance-cards">
-          <div class="card">
-            <p class="card-title">Average Score</p>
-            <p class="card-value">85%</p>
-          </div>
-          <div class="card">
-            <p class="card-title">Interviews Completed</p>
-            <p class="card-value">5</p>
-          </div>
-          <div class="card">
-            <p class="card-title">Areas for Improvement</p>
-            <p class="card-value">2</p>
-          </div>
+    <main class="main-content">
+      <header class="content-header">
+        <h1>欢迎回来, {{ authStore.currentUser?.fullName || '用户' }}!</h1>
+        <p class="current-date">{{ formattedDate }}</p>
+      </header>
+      <div class="dashboard-grid">
+        <div class="dashboard-card cta-card">
+          <h3>准备好迎接挑战了吗？</h3>
+          <p>从这里开始你的下一次求职准备之旅。</p>
+          <router-link :to="{ name: 'PracticeHome' }" class="form-button primary-button">
+            <font-awesome-icon :icon="['fas', 'rocket']" /> 前往练习中心
+          </router-link>
         </div>
-      </section>
-
-      <section class="content-section suggested-improvements">
-        <h2>Suggested Areas for Improvement</h2>
-        <ul class="improvement-list">
-          <li class="improvement-item">
-            <div class="item-icon-container">
-              <font-awesome-icon :icon="['fas', 'bullhorn']" class="item-icon" /> </div>
-            <div class="item-text">
-              <p class="item-title">Behavioral Questions</p>
-              <p class="item-description">Focus on providing specific examples to support your answers using the STAR method.</p>
-            </div>
-          </li>
-          <li class="improvement-item">
-            <div class="item-icon-container">
-              <font-awesome-icon :icon="['fas', 'comments']" class="item-icon" /> </div>
-            <div class="item-text">
-              <p class="item-title">Communication Skills</p>
-              <p class="item-description">Practice articulating your thoughts clearly and concisely. Pay attention to your pace and tone.</p>
-            </div>
-          </li>
-        </ul>
-      </section>
+        <div class="dashboard-card"><h3>近期练习</h3></div>
+        <div class="dashboard-card"><h3>我的统计</h3></div>
+        <div class="dashboard-card large-card"><h3>推荐学习</h3></div>
+      </div>
     </main>
   </div>
 </template>
 
 <script setup lang="ts">
-import { useAuthStore } from '../stores/auth';
-// import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'; // If not globally registered
+import { computed } from 'vue';
+import { useAuthStore } from '@/stores/auth';
+import { mainNavLinks } from '@/config/navigation';
 
 const authStore = useAuthStore();
+
+const formattedDate = computed(() => {
+  return new Date().toLocaleDateString('zh-CN', {
+    year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
+  });
+});
 </script>
 
 <style scoped>
-.home-view-content {
-  display: flex; /* This is the key for sidebar + main content */
-  flex-grow: 1; /* Takes remaining height from DefaultLayout */
-  background-color: var(--bg-color);
-  /* overflow: hidden; /* Prevent whole page scroll if sidebar/main content are handled internally */
+.home-view {
+  display: flex;
+  height: calc(100vh - 65px); /* 减去顶部导航栏高度 */
 }
 
-.sidebar {
-  width: 260px; /* Fixed width for sidebar, adjust as needed (w-80 from proto ~ 20rem/320px) */
-  flex-shrink: 0;
-  background-color: var(--card-bg-color); /* Sidebar distinct from main bg */
-  padding: 1.5rem 1rem;
+/* 左侧导航栏样式 */
+.left-sidebar {
+  width: 240px;
+  background-color: var(--card-bg-color);
   border-right: 1px solid var(--border-color);
-  height: calc(100vh - 3.8rem); /* Adjust based on your header height */
-  position: sticky;
-  top: 3.8rem; /* Adjust based on your header height */
-  overflow-y: auto;
+  padding: 1.5rem 0;
+  flex-shrink: 0;
 }
-[data-theme="light"] .sidebar {
-  background-color: #f8f9fc; /* Specific light theme sidebar bg */
-}
-
-
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
 }
-
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 0.875rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.375rem; /* Softer radius */
+  padding: 0.85rem 1.5rem;
+  color: var(--text-color-muted);
   text-decoration: none;
-  font-size: 0.9rem;
   font-weight: 500;
-  color: var(--text-color);
-  transition: background-color 0.2s ease, color 0.2s ease;
+  transition: all 0.2s ease;
+  border-left: 3px solid transparent;
 }
-.sidebar-link .icon {
-  width: 20px; /* Fixed width for icons */
-  text-align: center;
-  font-size: 1.1em; /* Relative to link font size */
-  opacity: 0.9;
+.sidebar-link .link-icon {
+  width: 20px;
+  margin-right: 1rem;
+  font-size: 1.1rem;
 }
-
 .sidebar-link:hover {
-  background-color: color-mix(in srgb, var(--primary-color) 10%, transparent);
+  background-color: var(--primary-color-translucent);
   color: var(--primary-color);
 }
-
-.sidebar-link.active { /* Relies on router-link-active-class="active" */
-  background-color: var(--primary-color);
-  color: white; /* Text color for active link on primary background */
-  font-weight: 600;
-}
-[data-theme="dark"] .sidebar-link.active {
-  /* Ensure good contrast for dark theme primary */
-  color: var(--bg-color); /* Or a specific dark theme active text color */
+.router-link-exact-active {
+  color: var(--primary-color);
+  border-left-color: var(--primary-color);
 }
 
-
-.main-content-area {
+/* 右侧主内容区样式 */
+.main-content {
   flex-grow: 1;
-  padding: 2rem; /* Main content padding */
-  overflow-y: auto; /* Allow main content to scroll independently */
-  height: calc(100vh - 3.8rem); /* Adjust based on header height */
+  padding: 2.5rem;
+  overflow-y: auto;
 }
-
-.welcome-header h1 {
-  font-size: 1.875rem; /* text-[30px] */
-  font-weight: 700;
-  color: var(--text-color);
-  margin-bottom: 1.5rem;
-}
-
-.action-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
+.content-header {
   margin-bottom: 2rem;
 }
-
-.action-button {
-  padding: 0.75rem 1.5rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  border-radius: 0.375rem;
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity 0.2s ease, transform 0.1s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
+.content-header h1 {
+  font-size: 2rem;
+  font-weight: 700;
 }
-.action-button:hover {
-  opacity: 0.85;
+.content-header .current-date {
+  color: var(--text-color-muted);
 }
-.action-button:active {
-  transform: translateY(1px);
-}
-
-.action-button .fa-icon {
-  font-size: 1em;
-}
-
-.action-button.primary {
-  background-color: var(--primary-color);
-  color: white;
-}
-.action-button.secondary {
-  background-color: var(--card-bg-color);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-}
-[data-theme="light"] .action-button.secondary {
-  background-color: #e9ecef; /* Slightly different secondary for light */
-  color: #212529;
-  border-color: #dee2e6;
-}
-
-
-.content-section {
-  margin-bottom: 2.5rem;
-}
-.content-section h2 {
-  font-size: 1.25rem; /* text-[20px] */
-  font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 1rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.performance-cards {
+.dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); /* Responsive cards */
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 1.5rem;
 }
-
-.card {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 1.25rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.5rem;
+.dashboard-card {
   background-color: var(--card-bg-color);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-}
-[data-theme="dark"] .card {
-  box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-}
-
-
-.card-title {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-color);
-  opacity: 0.9;
-}
-
-.card-value {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: var(--primary-color);
-}
-
-.improvement-list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.improvement-item {
-  display: flex;
-  align-items: flex-start; /* Align icon to top of text */
-  gap: 1rem;
-  padding: 1rem;
-  background-color: var(--card-bg-color);
-  border-radius: 0.5rem;
+  padding: 1.5rem;
+  border-radius: 8px;
   border: 1px solid var(--border-color);
-  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  min-height: 150px;
 }
-[data-theme="dark"] .improvement-item {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+.large-card {
+  grid-column: span 2; /* 示例：让某个卡片占据两列 */
 }
-
-.item-icon-container {
-  width: 2.75rem; /* size-11 */
-  height: 2.75rem;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 0.375rem;
-  background-color: color-mix(in srgb, var(--primary-color) 15%, transparent);
-  color: var(--primary-color);
+.cta-card {
+  background: var(--primary-color-translucent);
+  border-color: var(--primary-color);
 }
-
-.item-icon-container .item-icon {
-  font-size: 1.25rem;
-}
-
-.item-text {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  flex-grow: 1;
-}
-
-.item-title {
-  font-size: 1rem;
-  font-weight: 600;
-  color: var(--text-color);
-  margin-bottom: 0.25rem;
-}
-
-.item-description {
-  font-size: 0.875rem;
-  color: var(--text-color);
-  opacity: 0.8;
-  line-height: 1.5;
-}
+.cta-card h3 { color: var(--primary-color); }
+.cta-card .form-button { margin-top: 1rem; }
 </style>

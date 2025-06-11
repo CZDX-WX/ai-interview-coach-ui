@@ -80,16 +80,10 @@ export const useUserPreferencesStore = defineStore('userPreferences', {
 
         // This would trigger a more complex backend process
         async requestAccountDeletion() {
-            console.warn("Account deletion requested. This would typically involve backend confirmation and data erasure.");
-            // Simulate API call
+            console.warn("请求删除账户。这通常需要后端确认和数据擦除。");
             await new Promise(resolve => setTimeout(resolve, 1500));
-            // After successful deletion on backend:
-            // - Log user out (useAuthStore().logout())
-            // - Clear any local user-specific data (including these preferences)
-            // - Redirect to login/home page
-            localStorage.removeItem(PREFERENCES_STORAGE_KEY); // Clear local preferences
-            alert("If this were a real app, your account deletion process would be initiated. You will be logged out.");
-            // authStore.logout(); router.push('/login');
+            localStorage.removeItem(PREFERENCES_STORAGE_KEY);
+            alert("如果这是真实应用，您的账户删除流程将会启动。您将被登出。"); // 中文提示
             return true;
         },
 

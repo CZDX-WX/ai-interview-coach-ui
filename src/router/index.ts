@@ -1,16 +1,15 @@
 // src/router/index.ts
 import { createRouter, createWebHistory, RouteRecordRaw } from 'vue-router';
-import { useAuthStore } from '../stores/auth';
-import HomeView from '../views/HomeView.vue'; // Assuming this is your main dashboard after login
+import { useAuthStore } from '@/stores/auth';
+import HomeView from '../views/HomeView.vue';
 
-// Define routes that do not require authentication
-const PUBLIC_ROUTES = ['Login', 'Register', 'ForgotPassword', 'ResetPassword', 'LandingPage'];
+const PUBLIC_ROUTES = ['Login', 'Register', 'ForgotPassword', 'ResetPassword'];
 
 const routes: Array<RouteRecordRaw> = [
-    // --- General & Auth Routes ---
+    // --- 根 & 认证路由 ---
     {
         path: '/',
-        name: 'Home', // This is often the dashboard after login
+        name: 'Home',
         component: HomeView,
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
@@ -39,9 +38,9 @@ const routes: Array<RouteRecordRaw> = [
         meta: { layout: 'AuthLayout' },
     },
 
-    // --- Interview Flow Routes ---
+    // --- 面试流程路由 ---
     {
-        path: '/interview-setup', // Practice & Start New Interview can lead here
+        path: '/interview-setup',
         name: 'InterviewSetup',
         component: () => import('../views/interview/InterviewSetupView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
@@ -57,14 +56,14 @@ const routes: Array<RouteRecordRaw> = [
         name: 'InterviewRoom',
         component: () => import('../views/interview/InterviewRoomView.vue'),
         props: true,
-        meta: { requiresAuth: true, layout: 'DefaultLayout' }, // Or a more focused "InterviewLayout"
+        meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
-        path: '/interview/:sessionId/generating-report', // New loading page
+        path: '/interview/:sessionId/generating-report',
         name: 'GeneratingReport',
         component: () => import('../views/report/GeneratingReportView.vue'),
         props: true,
-        meta: { requiresAuth: true, layout: 'DefaultLayout' }, // Or a minimal layout
+        meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
         path: '/report/:sessionId',
@@ -74,7 +73,7 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
 
-    // --- Main App Section Routes ---
+    // --- 主要功能模块路由 ---
     {
         path: '/history',
         name: 'InterviewHistory',
@@ -82,34 +81,34 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
-        path: '/profile', // Or /account-settings
+        path: '/profile', // 也可设为 /settings/account
         name: 'AccountSettings',
         component: () => import('../views/account/AccountSettingsView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
-        path: '/settings', // General app settings
+        path: '/settings',
         name: 'Settings',
         component: () => import('../views/settings/SettingsView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
-        path: '/learn', // Learning Resources Page
-        name: 'LearningResourcesView',
+        path: '/learn',
+        name: 'LearningResources', // <-- 名称与 navigation.ts 对应
         component: () => import('../views/learn/LearningResourcesView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
-        path: '/career-insights', // MODIFIED from "Jobs"
-        name: 'CareerInsightsView', // MODIFIED from "Jobs"
-        component: () => import('../views/career/CareerInsightsView.vue'), // MODIFIED component path
+        path: '/career-insights',
+        name: 'CareerInsights', // <-- 名称与 navigation.ts 对应
+        component: () => import('../views/career/CareerInsightsView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
 
-    // --- Discussion Forum Routes (NEW) ---
+    // --- 讨论区路由 ---
     {
-        path: '/discussion', // MODIFIED from "Network"
-        name: 'DiscussionHomeView', // MODIFIED from "Network"
+        path: '/discussion',
+        name: 'DiscussionHome', // <-- 名称与 navigation.ts 对应
         component: () => import('../views/discussion/DiscussionHomeView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
@@ -127,21 +126,40 @@ const routes: Array<RouteRecordRaw> = [
         props: true,
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
-    // You might add a route for creating a new thread if not using a modal:
-    // {
-    //   path: '/discussion/category/:categoryId/new-thread',
-    //   name: 'CreateThreadView',
-    //   component: () => import('../views/discussion/CreateThreadView.vue'),
-    //   props: true,
-    //   meta: { requiresAuth: true, layout: 'DefaultLayout' },
-    // },
 
-    // --- Catch-all for 404 ---
+    // --- 练习模块路由 ---
+    {
+        path: '/practice',
+        name: 'PracticeHome', // <-- 名称与 navigation.ts 对应
+        component: () => import('../views/practice/PracticeHomeView.vue'),
+        meta: { requiresAuth: true, layout: 'DefaultLayout' },
+    },
+    {
+        path: '/practice/tech',
+        name: 'TechnicalPractice',
+        component: () => import('../views/practice/TechnicalPracticeView.vue'),
+        meta: { requiresAuth: true, layout: 'DefaultLayout' },
+    },
+    {
+        path: '/practice/oj', // 这个路径代表“在线判题(Online Judge)”模式
+        name: 'AlgorithmPractice', // <-- **核心修正点：将名称改为 'AlgorithmPractice'**
+        component: () => import('../views/practice/PracticeView.vue'), // 确保它指向正确的刷题列表视图组件
+        meta: { requiresAuth: true, layout: 'DefaultLayout' },
+    },
+    {
+        path: '/practice/problem/:problemId',
+        name: 'ProblemSolveView',
+        component: () => import('../views/practice/ProblemSolveView.vue'),
+        props: true,
+        meta: { requiresAuth: true, layout: 'DefaultLayout' },
+    },
+
+    // --- 404 页面 ---
     {
         path: '/:pathMatch(.*)*',
         name: 'NotFound',
         component: () => import('../views/NotFoundView.vue'),
-        meta: { layout: 'DefaultLayout' }, // Or a specific NotFoundLayout
+        meta: { layout: 'DefaultLayout' },
     }
 ];
 
@@ -152,32 +170,30 @@ const router = createRouter({
         if (savedPosition) {
             return savedPosition;
         } else {
-            return { top: 0 };
+            return { top: 0, behavior: 'smooth' };
         }
     },
 });
 
-// Navigation Guard (beforeEach) - Keep your existing guard logic
+// 全局导航守卫 (保持不变)
 router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore();
+    const token = localStorage.getItem('authToken');
+    const requiresAuth = to.meta.requiresAuth as boolean;
 
-    if (authStore.token && !authStore.user) {
-        await authStore.fetchUser();
+    if (token && !authStore.isAuthenticated) {
+        try {
+            await authStore.fetchUser();
+        } catch (error) {
+            console.log("自动登录失败，将作为未登录用户处理。");
+        }
     }
 
-    const requiresAuth = to.meta.requiresAuth;
-    const isPublicRouteName = PUBLIC_ROUTES.includes(to.name as string); // Check by name
-
-    // Redirect to login if route requires auth and user is not authenticated
     if (requiresAuth && !authStore.isAuthenticated) {
         next({ name: 'Login', query: { redirect: to.fullPath } });
-    }
-    // Redirect to home if user is authenticated and tries to access public-only pages like Login/Register
-    else if (!requiresAuth && isPublicRouteName && authStore.isAuthenticated && (to.name === 'Login' || to.name === 'Register')) {
+    } else if (PUBLIC_ROUTES.includes(to.name as string) && authStore.isAuthenticated) {
         next({ name: 'Home' });
-    }
-    // Allow navigation otherwise
-    else {
+    } else {
         next();
     }
 });

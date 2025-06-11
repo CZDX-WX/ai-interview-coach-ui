@@ -4,9 +4,9 @@
       <div class="spinner">
         <div></div><div></div><div></div><div></div>
       </div>
-      <h2>Generating Your Interview Report</h2>
-      <p>Our AI is analyzing your performance across various dimensions.</p>
-      <p>This might take a few moments...</p>
+      <h2>正在生成你的面试报告</h2>
+      <p>我们的AI正在从各个维度分析您的表现。</p>
+      <p>这可能需要一些时间...</p>
       <div class="progress-bar-container">
         <div class="progress-bar" :style="{ width: progress + '%' }"></div>
       </div>
@@ -18,22 +18,23 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useThemeStore } from '../../stores/theme'; // If you want to force a theme
+import { useThemeStore } from '@/stores/theme'; // If you want to force a theme
 
 const route = useRoute();
 const router = useRouter();
 const themeStore = useThemeStore();
 
 const progress = ref(0);
+// 中文化加载消息
 const messages = [
-  "Initializing analysis...",
-  "Processing video data (expressions, body language)...",
-  "Analyzing audio for tone and clarity...",
-  "Evaluating content and technical responses...",
-  "Assessing problem-solving approaches...",
-  "Compiling multi-modal feedback...",
-  "Finalizing report structure...",
-  "Almost there!"
+  "正在初始化分析引擎...",
+  "处理视频数据（表情、肢体语言）...",
+  "分析音频（语气、清晰度）...",
+  "评估回答内容与技术水平...",
+  "分析问题解决思路与方法...",
+  "整合多模态反馈信息...",
+  "正在生成报告结构...",
+  "即将完成，请稍候！"
 ];
 const currentMessageIndex = ref(0);
 let progressInterval: number;
@@ -42,32 +43,47 @@ const originalTheme = ref<string | null>(null);
 
 onMounted(() => {
   originalTheme.value = themeStore.currentTheme;
-  // Optionally force a theme for this page if desired, e.g., dark
-  // themeStore.setTheme('dark');
+  // themeStore.setTheme('dark'); // 如果需要强制此页面的主题
 
   const sessionId = route.params.sessionId as string;
-  let duration = 8000; // Simulate 8 seconds for report generation
-  const increment = 100 / (duration / 100); // Progress increment per 100ms
+  let duration = 8000; // 模拟 8 秒报告生成时间
+  const totalMessages = messages.length;
+  // 确保每个消息至少显示一段时间
+  const messageDisplayTime = duration / totalMessages;
+  // 进度条增长也基于消息切换，或者保持原来的时间基准
+  // const increment = 100 / (duration / 100);
+  const progressSteps = 100; // 总进度步数
+  const timePerProgressStep = duration / progressSteps;
+
 
   progressInterval = window.setInterval(() => {
-    progress.value = Math.min(100, progress.value + increment);
+    progress.value = Math.min(100, progress.value + (100/progressSteps)); // 每次增加1% (假设100步)
     if (progress.value >= 100) {
       clearInterval(progressInterval);
-      clearInterval(messageInterval);
-      router.replace({ name: 'ReportView', params: { sessionId } });
+      // clearInterval(messageInterval); // messageInterval 现在可以自行停止
+      // 确保在跳转前最后一条消息有机会显示
+      setTimeout(() => {
+        router.replace({ name: 'ReportView', params: { sessionId } });
+      }, messageDisplayTime / 2); // 在最后一条消息显示一半时间后跳转
     }
-  }, 100);
+  }, timePerProgressStep);
 
+  let msgIdx = 0;
+  currentMessageIndex.value = msgIdx;
   messageInterval = window.setInterval(() => {
-    currentMessageIndex.value = (currentMessageIndex.value + 1) % messages.length;
-  }, duration / messages.length);
+    msgIdx++;
+    if (msgIdx < totalMessages) {
+      currentMessageIndex.value = msgIdx;
+    } else {
+      clearInterval(messageInterval); // 所有消息都显示完毕
+    }
+  }, messageDisplayTime);
 });
 
 onBeforeUnmount(() => {
   clearInterval(progressInterval);
   clearInterval(messageInterval);
-  // Revert theme if it was forced
-  // if (originalTheme.value) {
+  // if (originalTheme.value && themeStore.currentTheme !== originalTheme.value) { // 仅当主题被强制更改时才恢复
   //   themeStore.setTheme(originalTheme.value as 'light' | 'dark');
   // }
 });

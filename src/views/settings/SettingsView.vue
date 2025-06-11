@@ -160,20 +160,20 @@ const handleAccountDeletion = async () => {
   }
 };
 
-// Optional: A general save button if not saving on change
-// const handleSaveChanges = () => {
-//   preferencesStore.setThemeOption(currentPreferences.selectedThemeOption);
-//   Object.keys(currentPreferences.notifications).forEach(key => {
-//     preferencesStore.updateNotificationPreference(
-//         key as keyof NotificationPreferences,
-//         currentPreferences.notifications[key as keyof NotificationPreferences]
-//     );
-//   });
-//   preferencesStore.setAllowDataUsageForAI(currentPreferences.allowDataUsageForAI);
-//   statusMessage.value = 'Settings saved successfully!';
-//   isError.value = false;
-//   setTimeout(() => statusMessage.value = '', 3000);
-// };
+
+const handleSaveChanges = () => {
+  preferencesStore.setThemeOption(currentPreferences.selectedThemeOption);
+  Object.keys(currentPreferences.notifications).forEach(key => {
+    preferencesStore.updateNotificationPreference(
+        key as keyof NotificationPreferences,
+        currentPreferences.notifications[key as keyof NotificationPreferences]
+    );
+  });
+  preferencesStore.setAllowDataUsageForAI(currentPreferences.allowDataUsageForAI);
+  statusMessage.value = 'Settings saved successfully!';
+  isError.value = false;
+  setTimeout(() => statusMessage.value = '', 3000);
+};
 
 onMounted(() => {
   // Ensure local state `currentPreferences` is synced with the store's initial state
