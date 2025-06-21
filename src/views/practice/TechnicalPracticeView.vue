@@ -2,529 +2,300 @@
   <div class="page-container">
     <header class="page-header">
       <h1>技术知识练习</h1>
-      <p>请选择您想练习的技术领域和具体主题，我们将为您生成一系列相关问题。</p>
+      <p>筛选公共题库进行练习，或使用右侧的工具生成您的专属题目。</p>
     </header>
 
-    <div class="generation-form-card">
-      <div class="selection-grid">
-        <div class="form-group">
-          <label for="cat-level1">技术大类</label>
-          <select id="cat-level1" v-model="selectedCategory" @change="onCategoryChange" class="form-input select-input">
-            <option disabled value="">请选择...</option>
-            <option v-for="cat in techCategories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="cat-level2">子分类</label>
-          <select id="cat-level2" v-model="selectedSubCategory" @change="onSubCategoryChange" class="form-input select-input" :disabled="!selectedCategory || subCategories.length === 0">
-            <option disabled value="">请选择...</option>
-            <option v-for="subCat in subCategories" :key="subCat.id" :value="subCat.id">{{ subCat.name }}</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="cat-level3">具体主题</label>
-          <select id="cat-level3" v-model="selectedTopic" class="form-input select-input" :disabled="!selectedSubCategory || topics.length === 0">
-            <option disabled value="">请选择...</option>
-            <option v-for="topic in topics" :key="topic.id" :value="topic.id">{{ topic.name }}</option>
-          </select>
-        </div>
-      </div>
-      <button @click="generateQuestions" class="form-button primary-button large-button" :disabled="isLoading || !selectedTopic">
-        <font-awesome-icon :icon="['fas', 'lightbulb']" :spin="isLoading" />
-        {{ isLoading ? '正在生成题目...' : '生成练习题' }}
-      </button>
-    </div>
-
-    <div v-if="isLoading" class="loading-state-small">
-      <div class="spinner"></div><p>AI 正在努力出题中，请稍候...</p>
-    </div>
-
-    <div v-else-if="generatedQuestions.length > 0" class="question-list-container">
-      <h2 class="list-title">为您生成的练习题 ({{ generatedQuestions.length }}道)</h2>
-      <div class="question-list">
-        <div v-for="(item, index) in generatedQuestions" :key="item.id" class="question-card">
-          <div class="question-header">
-            <span class="question-index">{{ index + 1 }}.</span>
-            <h3 class="question-title-text">{{ item.questionText }}</h3>
-          </div>
-
-          <div class="toggle-answer-action">
-            <button @click="toggleAnswer(index)" class="toggle-answer-button">
-              <font-awesome-icon :icon="activeIndex === index ? ['fas', 'chevron-up'] : ['fas', 'chevron-down']" class="toggle-icon" />
-              {{ activeIndex === index ? '隐藏答案' : '显示答案' }}
+    <div class="practice-layout">
+      <main class="main-content-panel">
+        <div class="filter-controls">
+          <div class="status-tabs">
+            <button v-for="tab in proficiencyTabs" :key="tab.id"
+                    :class="['filter-tab', { active: activeProficiencyFilter === tab.id }]"
+                    @click="handleProficiencyFilterChange(tab.id)">
+              <font-awesome-icon :icon="tab.icon" />
+              <span>{{ tab.label }}</span>
             </button>
           </div>
-
-          <transition name="expand">
-            <div v-if="activeIndex === index" class="answer-container">
-              <div class="content-section">
-                <h4>参考答案</h4>
-                <div class="answer-text" v-html="formatMarkdown(item.textAnswer)"></div>
-              </div>
-              <div v-if="item.imageAnswerUrl" class="content-section">
-                <h4>图文解答</h4>
-                <img :src="item.imageAnswerUrl" alt="图文解答" class="answer-image">
-              </div>
-              <div v-if="item.audioAnswerUrl" class="content-section">
-                <h4>语音解析</h4>
-                <audio controls :src="item.audioAnswerUrl" class="audio-player"></audio>
-              </div>
-            </div>
-          </transition>
+          <label class="bookmark-toggle" title="仅显示已收藏的题目">
+            <input type="checkbox" v-model="showOnlyBookmarked" />
+            <font-awesome-icon :icon="['fas', 'star']" />
+            <span>仅显示收藏</span>
+          </label>
         </div>
-      </div>
+
+        <div v-if="store.isLoading && store.questionList.length === 0" class="loading-state-small">
+          <div class="spinner"></div><p>{{ loadingText }}</p>
+        </div>
+
+        <div v-else-if="filteredQuestions.length > 0" class="question-list">
+          <TechQuestionItem
+              v-for="(item, index) in filteredQuestions" :key="item.id"
+              :question="item"
+              :index="index"
+              :is-answer-visible="activeQuestionId === item.id"
+              @toggle-answer="toggleAnswer(item.id)"
+              @update-status="status => handleUpdateStatus(item.id, status)"
+              @toggle-bookmark="handleToggleBookmark(item.id)"
+              @reset-status="handleResetStatus(item.id)"
+          />
+        </div>
+
+        <div v-else class="initial-prompt-area">
+          <font-awesome-icon :icon="['fas', 'search']" class="empty-icon"/>
+          <p>当前筛选条件下没有题目，请尝试调整筛选条件。</p>
+        </div>
+
+        <div class="pagination-controls" v-if="!store.isLoading && store.pagination.pages > 1">
+          <button @click="changePage(store.pagination.current - 1)" :disabled="store.pagination.current === 1" class="pagination-button">
+            <font-awesome-icon :icon="['fas', 'chevron-left']" /> 上一页
+          </button>
+          <span class="page-info">第 {{ store.pagination.current }} 页 / 共 {{ store.pagination.pages }} 页</span>
+          <button @click="changePage(store.pagination.current + 1)" :disabled="store.pagination.current >= store.pagination.pages" class="pagination-button">
+            下一页 <font-awesome-icon :icon="['fas', 'chevron-right']" />
+          </button>
+        </div>
+      </main>
+
+      <aside class="sidebar-panel">
+        <TechPracticeSidebar
+            :roles="store.roles"
+            :tags="store.tags"
+            :is-loading="store.isLoading"
+            :is-admin="authStore.isAdmin"
+            @search="triggerSearch"
+            @open-generate-modal="handleOpenGenerateModal"
+        />
+      </aside>
     </div>
 
-    <div v-else-if="!isLoading && initialLoad" class="empty-state initial-prompt">
-      <font-awesome-icon :icon="['fas', 'wand-magic-sparkles']" class="empty-icon" />
-      <p>选择您感兴趣的技术主题，开始您的专属练习吧！</p>
+    <div class="async-task-tracker" v-if="activeTasks.length > 0">
     </div>
+
+    <GenerationOptionsModal
+        :is-open="showGenerationModal"
+        :is-loading="store.isLoading"
+        :selected-role-name="selectedRoleForModal?.name"
+        :selected-tags="selectedTagsForModal.map(t => t.name)"
+        :selected-difficulty="selectedDifficultyForModal"
+        :selected-strategy-text="selectedStrategyTextForModal"
+        @close="showGenerationModal = false"
+        @confirm="handleConfirmGeneration"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import MarkdownIt from 'markdown-it';
+import { ref, onMounted, computed, watch } from 'vue';
+import { useTechPracticeStore } from '@/stores/techPracticeStore';
+import { useAuthStore } from '@/stores/auth';
+import type { TechQuestion, Tag } from '@/types/techPracticeTypes';
+import type { PersonalizedGenerationRequest } from '@/types/apiTypes';
+import TechPracticeSidebar from '../../components/practice/TechPracticeSidebar.vue';
+import TechQuestionItem from '../../components/practice/TechQuestionItem.vue';
+import GenerationOptionsModal from '../../components/practice/GenerationOptionsModal.vue';
 // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-// --- 核心修正点 1: 为数据结构定义清晰的 TypeScript 类型 ---
-interface Topic {
-  id: string;
-  name: string;
+// --- 类型定义 ---
+type ProficiencyFilter = 'ALL' | 'NOT_PRACTICED' | 'NEEDS_REVIEW' | 'MASTERED';
+interface StatusTab {
+  id: ProficiencyFilter;
+  label: string;
+  icon: string[];
 }
 
-interface SubCategory {
-  id: string;
-  name: string;
-  topics: Topic[];
-}
+// --- Store 实例 ---
+const store = useTechPracticeStore();
+const authStore = useAuthStore();
 
-interface TechCategory {
-  id: string;
-  name: string;
-  subCategories: SubCategory[];
-}
+// --- 本地 UI 状态 ---
+const loadingText = ref('正在加载题库...');
+const activeQuestionId = ref<string | null>(null);
+const activeProficiencyFilter = ref<ProficiencyFilter>('ALL');
+const showOnlyBookmarked = ref(false);
+const showGenerationModal = ref(false);
+const isAdminAction = ref(false);
 
-interface GeneratedQuestion {
-  id: string;
-  topic: string;
-  questionText: string;
-  textAnswer: string;
-  audioAnswerUrl?: string;
-  imageAnswerUrl?: string;
-}
-// --- 类型定义结束 ---
-
-
-const topic = ref('');
-const isLoading = ref(false);
-const initialLoad = ref(true);
-const md = new MarkdownIt({ html: true, linkify: true, typographer: true });
-
-// --- 核心修正点 2: 将类型应用到 ref 上 ---
-const techCategories = ref<TechCategory[]>([
-  {
-    id: 'frontend',
-    name: '前端',
-    subCategories: [
-      {
-        id: 'frameworks',
-        name: '框架与库',
-        topics: [
-          {id: 'vue', name: 'Vue.js'},
-          {id: 'react', name: 'React'}
-        ]
-      },
-      {
-        id: 'basics',
-        name: '基础三件套',
-        topics: [
-          {id: 'js-async', name: 'JavaScript 异步'},
-          {id: 'css-layout', name: 'CSS 布局'}
-        ]
-      }
-    ]
-  },
-  {
-    id: 'backend',
-    name: '后端',
-    subCategories: [
-      {
-        id: 'java',
-        name: 'Java',
-        topics: [
-          {id: 'jvm', name: 'JVM'},
-          {id: 'juc', name: '并发(JUC)'}
-        ]
-      },
-      {
-        id: 'database',
-        name: '数据库',
-        topics: [
-          {id: 'mysql-index', name: 'MySQL 索引'},
-          {id: 'redis-cache', name: 'Redis 缓存策略'}
-        ]
-      }
-    ]
-  }
+const proficiencyTabs = ref<StatusTab[]>([
+  { id: 'ALL', label: '全部题目', icon: ['fas', 'list-ul'] },
+  { id: 'NOT_PRACTICED', label: '未学习', icon: ['far', 'circle'] },
+  { id: 'NEEDS_REVIEW', label: '待复习', icon: ['fas', 'book-reader'] },
+  { id: 'MASTERED', label: '已掌握', icon: ['fas', 'check-double'] },
 ]);
 
-const selectedCategory = ref('');
-const selectedSubCategory = ref('');
-const selectedTopic = ref('');
+// --- 计算属性 ---
 
-// TypeScript 现在可以正确推断出 c 是 TechCategory 类型，s 是 SubCategory 类型
-const subCategories = computed(() => {
-  return techCategories.value.find(c => c.id === selectedCategory.value)?.subCategories || [];
+// **核心**: 纯前端的组合筛选逻辑
+const filteredQuestions = computed(() => {
+  return store.questionList.filter(q => {
+    if (!q) return false;
+    const bookmarkMatch = !showOnlyBookmarked.value || q.isBookmarked;
+    const proficiencyMatch = activeProficiencyFilter.value === 'ALL' || q.proficiencyStatus === activeProficiencyFilter.value;
+    return bookmarkMatch && proficiencyMatch;
+  });
 });
-const topics = computed(() => {
-  return subCategories.value.find(s => s.id === selectedSubCategory.value)?.topics || [];
-});
 
-const onCategoryChange = () => { selectedSubCategory.value = ''; selectedTopic.value = ''; };
-const onSubCategoryChange = () => { selectedTopic.value = ''; };
+// 计算属性，用于向模态框传递确认信息
+const selectedRoleForModal = computed(() => Object.values(store.roles).flat().find(r => r.id === store.filters.roleId));
+const selectedTagsForModal = computed(() => store.filters.tagIds.map(id => store.tags.find(t => t.id === id)).filter(Boolean) as Tag[]);
+const selectedDifficultyForModal = computed(() => store.filters.difficulty === 'all' ? '全部' : store.filters.difficulty);
+const selectedStrategyTextForModal = computed(() => store.filters.searchMode === 'ANY_TAG' ? '任意标签匹配' : '所有标签均匹配');
 
-const generatedQuestions = ref<GeneratedQuestion[]>([]);
-const activeIndex = ref<number | null>(null);
-const generateQuestions = () => {
-  if (!selectedTopic.value) return;
+const isFilterActive = computed(() => activeProficiencyFilter.value !== 'ALL' || showOnlyBookmarked.value);
+const activeTasks = computed(() => store.activeAsyncTasks);
 
-  isLoading.value = true;
-  initialLoad.value = false;
-  generatedQuestions.value = [];
-  activeIndex.value = null;
+// --- 事件处理器与方法 ---
 
-  console.log(`正在为主题 "${selectedTopic.value}" 生成模拟数据...`);
-
-  // 获取主题名称（模拟API前置操作）
-  const topicName = topics.value.find(t => t.id === selectedTopic.value)?.name || '该主题';
-
-  // 模拟API延迟
-  setTimeout(() => {
-    console.warn("正在使用模拟数据");
-
-    generatedQuestions.value = Array.from([
-      {
-        id: 'juc_q1_mock',
-        topic: topicName,
-        questionText: "请解释一下 Java 中的 `volatile` 关键字是如何保证内存可见性的，并说明其与 `synchronized` 的主要区别。",
-        textAnswer: `
-好的，这个问题可以从两个方面来回答：
-
-### \`volatile\` 的内存可见性原理
-\`volatile\` 关键字主要通过以下两点来保证共享变量在多线程环境下的可见性：
-1. **强制从主内存读取**：读取时从主内存重新加载值
-2. **强制写回主内存**：修改时立即刷新到主内存
-
-### 与 \`synchronized\` 的区别
-| 特性         | \`volatile\`                  | \`synchronized\`               |
-|--------------|-------------------------------|--------------------------------|
-| **作用级别** | 变量级别（轻量级）            | 方法/代码块级别（重量级）      |
-| **保证**     | 可见性和有序性                | 可见性、有序性和原子性         |
-| **阻塞**     | 不会造成线程阻塞              | 会造成线程阻塞                 |
-| **使用场景** | 一写多读或状态标记            | 需要保证复合操作原子性的场景   |
-`.trim(),
-        imageAnswerUrl: 'https://i.imgur.com/3J8B47G.png',  // Java内存模型示意图
-        audioAnswerUrl: void 0
-      },
-      {
-        id: 'juc_q2_mock',
-        topic: topicName,
-        questionText: "什么是 `AQS` (AbstractQueuedSynchronizer)？请举例说明它在 `ReentrantLock` 和 `CountDownLatch` 中的应用。",
-        textAnswer: `
-\`AQS\` 是 Java 并发包（JUC）的基石，核心组件：
-1. **\`state\` 变量**：表示同步状态
-2. **FIFO 等待队列**：管理等待线程
-
-### 应用示例
-**\`ReentrantLock\`**:
-- \`lock()\` → \`acquire()\` → \`tryAcquire()\`
-- \`unlock()\` → \`release()\` → \`tryRelease()\`
-
-**\`CountDownLatch\`**:
-- \`await()\` → \`acquireSharedInterruptibly()\`
-- \`countDown()\` → \`releaseShared()\`
-`.trim(),
-        imageAnswerUrl: void 0,
-        audioAnswerUrl: '/mock-audio/aqs_explanation.mp3'
-      },
-      {
-        id: 'juc_q3_mock',
-        topic: topicName,
-        questionText: "请解释 `ThreadPoolExecutor` 的核心构造参数及其工作流程。",
-        textAnswer: `
-### 核心参数
-1. \`corePoolSize\`：核心线程数
-2. \`maximumPoolSize\`：最大线程数
-3. \`workQueue\`：任务队列类型
-4. \`handler\`：拒绝策略
-
-### 工作流程
-1. 当前线程数 < corePoolSize → 创建新线程
-2. 线程数 ≥ corePoolSize → 任务入队
-3. 队列满且线程数 < maximumPoolSize → 创建临时线程
-4. 队列满且线程数达上限 → 执行拒绝策略
-`.trim(),
-        imageAnswerUrl: 'https://i.imgur.com/W2zTzXp.png',  // 线程池流程图
-        audioAnswerUrl: void 0
-      }
-    ]);
-
-    isLoading.value = false;
-  }, 1500);
+const handleProficiencyFilterChange = (statusId: ProficiencyFilter) => {
+  activeProficiencyFilter.value = statusId;
 };
 
-const formatMarkdown = (text: string) => md.render(text);
-
-const toggleAnswer = (index: number) => {
-  activeIndex.value = activeIndex.value === index ? null : index;
+let searchDebounceTimer: number;
+const triggerSearch = () => {
+  clearTimeout(searchDebounceTimer);
+  searchDebounceTimer = window.setTimeout(() => {
+    loadingText.value = '正在按条件搜索题目...';
+    store.searchQuestions();
+  }, 300);
 };
+
+const handleOpenGenerateModal = (isPopulate: boolean) => {
+  if (!store.filters.roleId || store.filters.tagIds.length === 0) {
+    alert("请先选择目标岗位和至少一个技术标签。");
+    return;
+  }
+  isAdminAction.value = isPopulate;
+  showGenerationModal.value = true;
+};
+
+const handleConfirmGeneration = (modalOptions: { count: number; }) => {
+  showGenerationModal.value = false;
+  const payload: PersonalizedGenerationRequest = {
+    roleId: store.filters.roleId!,
+    roleName: selectedRoleForModal.value?.name || '',
+    tags: selectedTagsForModal.value.map(t => t.name),
+    difficulty: store.filters.difficulty === 'all' ? '中等' : store.filters.difficulty,
+    numQuestions: modalOptions.count,
+    strategy: store.filters.searchMode === 'ANY_TAG' ? 'BREADTH_COVERAGE' : 'INTEGRATED_DEEP_DIVE',
+  };
+  if (isAdminAction.value) { store.startPublicGeneration(payload); }
+  else { store.startPersonalizedGeneration(payload); }
+};
+
+const toggleAnswer = (questionId: string) => {
+  activeQuestionId.value = activeQuestionId.value === questionId ? null : questionId;
+};
+
+const changePage = (pageNumber: number) => {
+  loadingText.value = '正在加载题目...';
+  store.searchQuestions(pageNumber);
+};
+
+// **核心修正点**: 确保所有来自子组件的事件都有对应的处理函数
+const handleUpdateStatus = (questionId: string, status: 'NEEDS_REVIEW' | 'MASTERED') => {
+  console.log(`[View] 接收到 @update-status 事件: qId=${questionId}, status=${status}`);
+  store.updateQuestionStatus(questionId, status);
+};
+const handleResetStatus = (questionId: string) => {
+  console.log(`[View] 接收到 @reset-status 事件: qId=${questionId}`);
+  store.resetQuestionStatus(questionId);
+};
+const handleToggleBookmark = (questionId: string) => {
+  console.log(`[View] 接收到 @toggle-bookmark 事件: qId=${questionId}`);
+  store.toggleQuestionBookmark(questionId);
+};
+
+// --- 生命周期与侦听器 ---
+onMounted(() => {
+  store.searchQuestions();
+  store.fetchRoles();
+  store.fetchProgressStats();
+});
+
+watch(() => store.filters, triggerSearch, { deep: true });
 </script>
 
 <style scoped>
-.page-container { max-width: 900px; margin: 0 auto; padding: 2.5rem; }
-.page-header { text-align: center; margin-bottom: 2rem; }
-.page-header h1 { font-size: 2.25rem; font-weight: 700; }
-.page-header p { font-size: 1rem; color: var(--text-color-muted); }
+.page-container {
+  max-width: 1400px; margin: 0 auto; padding: 2rem 2.5rem;
+}
+.page-header { margin-bottom: 2rem; }
+.page-header h1 { font-size: 2.25rem; font-weight: 700; color: var(--text-color); }
+[data-theme="dark"] .page-header h1 { color: #ffffff; }
+.page-header p { font-size: 1.1rem; color: var(--text-color-muted); margin-top: 0.5rem; max-width: 700px; }
 
-.generation-form-card {
-  padding: 2rem;
-  background-color: var(--card-bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  margin-bottom: 2.5rem;
+.practice-layout {
+  display: grid; grid-template-columns: 1fr 340px;
+  gap: 2rem; align-items: flex-start;
 }
-.selection-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1.5rem;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.form-group label {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-.form-input { /* ... (依赖全局样式) ... */ }
-.select-input { /* ... (依赖全局样式) ... */ }
-
-.large-button {
-  padding: 0.8rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 500;
-  align-self: center; /* 按钮居中 */
+@media (max-width: 1024px) {
+  .practice-layout { grid-template-columns: 1fr; }
+  .sidebar-panel { grid-row-start: 1; margin-bottom: 2rem; }
 }
 
-.loading-state-small {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  padding: 2rem;
-  text-align: center;
-  font-size: 1rem;
+.main-content-panel { display: flex; flex-direction: column; gap: 1.5rem; }
+.sidebar-panel { width: 100%; flex-shrink: 0; }
+
+.filter-controls {
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 1.5rem; padding: 1rem;
+  background-color: var(--card-bg-color); border-radius: 8px;
+}
+[data-theme="dark"] .filter-controls { background-color: #1c2126; border: 1px solid #3c4753;}
+
+.status-tabs { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.filter-tab {
+  padding: 0.5rem 1rem; font-size: 0.85rem; font-weight: 500;
+  color: var(--text-color-muted); background-color: var(--bg-color);
+  border: 1px solid var(--border-color); border-radius: 20px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 0.5rem;
+  transition: all 0.2s ease;
+}
+.filter-tab:hover { border-color: var(--primary-color); color: var(--primary-color); }
+.filter-tab.active { background-color: var(--primary-color); border-color: var(--primary-color); color: white; }
+[data-theme="dark"] .filter-tab { background-color: #2c3035; border-color: #40474f; color: #9daab8; }
+[data-theme="dark"] .filter-tab:hover { background-color: #374151; }
+
+.bookmark-toggle {
+  display: flex; align-items: center; gap: 0.5rem; cursor: pointer;
+  font-size: 0.9rem; font-weight: 500; color: var(--text-color-muted);
+  padding: 0.5rem 1rem; border-radius: 20px; transition: all 0.2s ease;
+  border: 1px solid transparent;
+}
+.bookmark-toggle:hover { background-color: var(--border-color); }
+.bookmark-toggle input[type="checkbox"] { width: 1.1em; height: 1.1em; accent-color: #f6ad55; cursor: pointer; }
+.bookmark-toggle .fa-star { color: #f6ad55; }
+
+.question-list { display: flex; flex-direction: column; gap: 1.5rem; }
+.loading-state-small, .initial-prompt-area {
+  padding: 4rem 2rem; text-align: center; border-radius: 12px;
   color: var(--text-color-muted);
 }
-.loading-state-small .spinner { width: 32px; height: 32px; margin: 0; }
-.loading-state-small .spinner div { width: 28px; height: 28px; border-width: 3px; }
+.loading-state-small { display: flex; align-items: center; justify-content: center; gap: 1rem; background-color: var(--card-bg-color); }
+.initial-prompt-area { border: 2px dashed var(--border-color); line-height: 1.7; }
+.initial-prompt-area .empty-icon { font-size: 2.5rem; margin-bottom: 1rem; color: var(--primary-color); opacity: 0.6; }
 
-.question-list-container { margin-top: 2.5rem; }
-.list-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
-.accordion { border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
-.accordion-item { border-bottom: 1px solid var(--border-color); }
-.accordion-item:last-child { border-bottom: none; }
+.pagination-controls { /* ... */ }
 
-.accordion-header {
-  width: 100%; padding: 1.25rem 1.5rem; background-color: var(--card-bg-color);
-  border: none; text-align: left; font-size: 1rem; font-weight: 500;
-  color: var(--text-color); cursor: pointer; display: flex;
-  justify-content: space-between; align-items: center; transition: background-color 0.2s ease;
+.async-task-tracker {
+  position: fixed; bottom: 1.5rem; right: 1.5rem;
+  display: flex; flex-direction: column; gap: 1rem; z-index: 1100;
 }
-.accordion-header:hover { background-color: var(--border-color); }
-.accordion-header .question-text {
-  flex-grow: 1;
-  padding-right: 1rem;
-  line-height: 1.5;
+.task-item {
+  background-color: var(--card-bg-color); padding: 1rem 1.25rem; border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--border-color);
+  width: 320px; display: flex; flex-direction: column; gap: 0.5rem;
 }
-.accordion-icon { transition: transform 0.3s ease; flex-shrink: 0; }
-.accordion-header[aria-expanded="true"] .accordion-icon { transform: rotate(180deg); }
-
-.accordion-content {
-  padding: 0 1.5rem 1.5rem 1.5rem; /* 上方无padding，因为它与header有分割线 */
-  background-color: var(--bg-color);
-  border-top: 1px solid var(--border-color);
-}
-.content-section { margin-top: 1.5rem; }
-.content-section:first-child { margin-top: 0; padding-top: 1.5rem; }
-.content-section h3 {
-  font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;
-  padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);
-  display: flex; align-items: center; gap: 0.5rem;
-}
-.answer-text { line-height: 1.8; font-size: 0.95rem; }
-.answer-text :deep(p) { margin-bottom: 1em; }
-.answer-text :deep(ul), .answer-text :deep(ol) { padding-left: 1.5rem; }
-.answer-text :deep(code) {
-  background-color: var(--border-color); padding: 0.15em 0.4em;
-  border-radius: 4px; font-size: 0.85em;
-}
-[data-theme="dark"] .answer-text :deep(code) { background-color: #2c3035; }
-.answer-text :deep(pre) {
-  background-color: var(--input-bg-color);
-  color: var(--input-text-color);
-  padding: 1rem;
-  border-radius: 6px;
-  overflow-x: auto;
-}
-
-.answer-image { max-width: 100%; border-radius: 6px; margin-top: 1rem; border: 1px solid var(--border-color); }
-.audio-player { width: 100%; margin-top: 1rem; }
-
-.expand-enter-active, .expand-leave-active { transition: grid-template-rows 0.3s ease-out; }
-.expand-enter-from, .expand-leave-to { grid-template-rows: 0fr; }
-/* 上述手风琴动画需要JS配合或更复杂的CSS，为简单起见，我们使用一个淡入淡出 */
-.expand-enter-active { transition: opacity 0.3s ease, transform 0.3s ease; }
-.expand-leave-active { transition: opacity 0.2s ease; }
-.expand-enter-from, .expand-leave-to { opacity: 0; transform: translateY(-10px); }
-
-.empty-state.initial-prompt {
-  border-style: dashed;
-  opacity: 0.8;
-}
-.empty-state.initial-prompt .empty-icon {
-  font-size: 2.5rem;
-}
-/* **新增/修改的样式** */
-.question-list-container { margin-top: 2.5rem; }
-.list-title { font-size: 1.5rem; font-weight: 600; margin-bottom: 1.5rem; }
-.question-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem; /* 每个问题卡片之间的间距 */
-}
-
-.question-card {
-  background-color: var(--card-bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 10px; /* 更圆润的卡片 */
-  padding: 1.5rem;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.04);
-  transition: box-shadow 0.3s ease;
-}
-[data-theme="dark"] .question-card {
-  box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-}
-.question-card:hover {
-  box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-}
-[data-theme="dark"] .question-card:hover {
-  box-shadow: 0 5px 15px rgba(0,0,0,0.25);
-}
-
-
-.question-header {
-  display: flex;
-  gap: 0.75rem; /* 题号和题目文本的间距 */
-  align-items: flex-start; /* 垂直方向上对齐顶部 */
-  margin-bottom: 1rem;
-}
-.question-index {
-  font-weight: 600;
-  color: var(--primary-color);
-  font-size: 1.1rem;
-  line-height: 1.6; /* 与题目文本行高对齐 */
-}
-.question-title-text {
-  font-size: 1.1rem;
-  font-weight: 600;
-  color: var(--text-color);
-  line-height: 1.6;
-  flex-grow: 1;
-}
-[data-theme="dark"] .question-title-text {
-  color: #ffffff;
-}
-
-
-.toggle-answer-action {
-  display: flex;
-  justify-content: flex-start; /* 按钮靠左 */
-  padding-top: 0.5rem;
-  margin-top: 1rem;
-  border-top: 1px dashed var(--border-color);
-}
-.toggle-answer-button {
-  background-color: transparent;
-  color: var(--text-color-muted);
-  border: 1px solid var(--border-color);
-  padding: 0.4rem 1rem;
-  border-radius: 20px; /* 胶囊形状 */
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s ease-in-out;
-}
-.toggle-answer-button:hover {
-  background-color: var(--primary-color-translucent);
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-.toggle-answer-button .toggle-icon {
-  transition: transform 0.3s ease;
-}
-
-
-.answer-container {
-  padding-top: 1.5rem;
-  margin-top: 1rem;
-  border-top: 1px solid var(--border-color); /* 答案区与按钮之间的分割线 */
-}
-
-/* 答案内部的样式 (与手风琴版本一致) */
-.content-section { margin-bottom: 1.5rem; }
-.content-section:last-child { margin-bottom: 0; }
-.content-section h4 {
-  font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem;
-  display: flex; align-items: center; gap: 0.5rem;
-}
-.answer-text { line-height: 1.8; font-size: 0.95rem; }
-.answer-text :deep(p) { margin-bottom: 1em; }
-.answer-text :deep(ul), .answer-text :deep(ol) { padding-left: 1.5rem; }
-.answer-text :deep(code) {
-  background-color: var(--border-color); padding: 0.15em 0.4em;
-  border-radius: 4px; font-size: 0.85em;
-}
-[data-theme="dark"] .answer-text :deep(code) { background-color: #2c3035; }
-.answer-text :deep(pre) { /* ... (样式不变) ... */ }
-.answer-image { max-width: 100%; border-radius: 6px; margin-top: 1rem; border: 1px solid var(--border-color); }
-.audio-player { width: 100%; margin-top: 1rem; }
-
-/* 展开/折叠的动画 */
-.expand-enter-active,
-.expand-leave-active {
-  transition: all 0.3s ease-out;
-  overflow: hidden;
-}
-.expand-enter-from,
-.expand-leave-to {
-  max-height: 0;
-  opacity: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  margin-top: 0;
-}
-.expand-enter-to,
-.expand-leave-from {
-  max-height: 1000px; /* 一个足够大的值 */
-  opacity: 1;
+.task-header { display: flex; align-items: center; gap: 0.75rem; }
+.task-message { font-size: 0.9rem; font-weight: 500; flex-grow: 1; color: var(--text-color); }
+[data-theme="dark"] .task-message { color: #ffffff; }
+.task-progress-bar { width: 100%; height: 8px; background-color: var(--border-color); border-radius: 4px; overflow: hidden; position: relative; }
+.task-progress-fill { height: 100%; background-color: var(--primary-color); border-radius: 4px; transition: width 0.3s ease; }
+.task-progress-bar span {
+  position: absolute; right: 6px; top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 0 0 2px rgba(0,0,0,0.7);
 }
 </style>

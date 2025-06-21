@@ -1,19 +1,31 @@
 <template>
   <Teleport to="body">
     <transition name="modal-fade">
-      <div v-if="isOpen" class="modal-overlay" @click.self="closeModal">
-        <div class="modal-content" role="dialog" aria-modal="true" :aria-labelledby="titleId">
-          <header class="modal-header" v-if="title || $slots.header">
+      <div
+          v-if="isOpen"
+          class="modal-backdrop"
+          @click="closeModalOnClickOutside"
+      >
+        <div class="modal-container" @click.stop>
+          <header class="modal-header">
             <slot name="header">
-              <h3 :id="titleId" class="modal-title">{{ title }}</h3>
+              <h3 class="modal-title">{{ title }}</h3>
             </slot>
-            <button @click="closeModal" class="modal-close-button" aria-label="关闭模态框">
+            <button
+                v-if="showCloseButton"
+                @click="closeModal"
+                class="close-button"
+                aria-label="关闭模态框"
+            >
               <font-awesome-icon :icon="['fas', 'times']" />
             </button>
           </header>
+
           <main class="modal-body">
-            <slot></slot> </main>
-          <footer class="modal-footer" v-if="$slots.footer">
+            <slot />
+          </main>
+
+          <footer v-if="$slots.footer" class="modal-footer">
             <slot name="footer"></slot>
           </footer>
         </div>
@@ -23,39 +35,52 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from 'vue';
+import { watch, onMounted, onUnmounted } from 'vue';
 // import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-const props = defineProps<{
+// **核心修正点 2**: 使用 withDefaults 来定义 props，并添加 persistent 和 showCloseButton
+const props = withDefaults(defineProps<{
   isOpen: boolean;
   title?: string;
-}>();
+  persistent?: boolean; // 是否为持久性模态框 (点击外部或按ESC无法关闭)
+  showCloseButton?: boolean; // 是否显示右上角的关闭按钮
+}>(), {
+  persistent: false, // 默认为非持久性
+  showCloseButton: true, // 默认显示关闭按钮
+});
 
-const emit = defineEmits<{
-  (e: 'update:isOpen', value: boolean): void;
-  (e: 'close'): void;
-}>();
-
-const titleId = computed(() => props.title ? `modal-title-${Math.random().toString(36).substring(2, 9)}` : undefined);
+const emit = defineEmits(['close']);
 
 const closeModal = () => {
-  emit('update:isOpen', false);
   emit('close');
 };
 
-// Optional: Close modal on Escape key press
-const handleEscKey = (event: KeyboardEvent) => {
-  if (event.key === 'Escape' && props.isOpen) {
+// **核心修正点 3**: 关闭逻辑现在会检查 persistent 属性
+const closeModalOnClickOutside = () => {
+  if (!props.persistent) {
     closeModal();
   }
 };
 
-onMounted(() => {
-  document.addEventListener('keydown', handleEscKey);
+const closeModalOnEscape = (event: KeyboardEvent) => {
+  if (event.key === 'Escape' && props.isOpen && !props.persistent) {
+    closeModal();
+  }
+};
+
+watch(() => props.isOpen, (newVal) => {
+  if (newVal) {
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', closeModalOnEscape);
+  } else {
+    document.body.style.overflow = '';
+    window.removeEventListener('keydown', closeModalOnEscape);
+  }
 });
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleEscKey);
+  window.removeEventListener('keydown', closeModalOnEscape);
+  document.body.style.overflow = '';
 });
 </script>
 

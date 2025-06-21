@@ -2,14 +2,23 @@ import { defineStore } from 'pinia';
 import apiClient from '../services/api';
 import type { User } from '@/types/userTypes';
 import type { ResumeInfo } from '@/types/commonTypes';
-import type { LoginRequest, RegisterRequest, UpdateUserProfileRequest, ChangePasswordRequest } from '@/types/apiTypes';
+import type {
+    LoginRequest,
+    RegisterRequest,
+    UpdateUserProfileRequest,
+    ChangePasswordRequest
+} from '@/types/apiTypes';
 import type { AuthResponseData, UserProfileData } from '@/types/apiResponseTypes';
 
+/**
+ * 认证 Store 的状态接口
+ */
 interface AuthState {
     user: User | null;
     token: string | null;
     status: 'idle' | 'loading' | 'success' | 'error';
     error: string | null;
+    isSessionExpired: boolean; // 新增：用于控制会话过期模态框的显示
 }
 
 const AUTH_TOKEN_KEY = 'authToken';
@@ -23,52 +32,77 @@ export const useAuthStore = defineStore('auth', {
         if (storedUserData) {
             try {
                 storedUser = JSON.parse(storedUserData);
-            } catch (e) { console.error("解析本地用户数据失败:", e); localStorage.removeItem(USER_DATA_KEY); }
+            } catch (e) {
+                console.error("解析本地用户数据失败:", e);
+                localStorage.removeItem(USER_DATA_KEY);
+            }
         }
-        return { user: storedUser, token: storedToken, status: 'idle', error: null };
+        return {
+            user: storedUser,
+            token: storedToken,
+            status: 'idle',
+            error: null,
+            isSessionExpired: false, // 初始化为 false
+        };
     },
 
     getters: {
         isAuthenticated: (state): boolean => !!state.token && !!state.user,
         isLoading: (state): boolean => state.status === 'loading',
         currentUser: (state): User | null => state.user,
+
+        /**
+         * 判断当前用户是否为管理员
+         */
+        isAdmin: (state): boolean => {
+            // 使用数组的 .includes() 方法
+            return state.user?.authorities?.includes('ROLE_ADMIN') ?? false;
+        }
     },
 
     actions: {
         _persistUser() {
-            if (this.user) localStorage.setItem(USER_DATA_KEY, JSON.stringify(this.user));
-            else localStorage.removeItem(USER_DATA_KEY);
+            if (this.user) {
+                localStorage.setItem(USER_DATA_KEY, JSON.stringify(this.user));
+            } else {
+                localStorage.removeItem(USER_DATA_KEY);
+            }
         },
 
+        /**
+         * 用户登录
+         */
         async login(credentials: LoginRequest) {
             this.status = 'loading';
             this.error = null;
             try {
                 const response = await apiClient.post<AuthResponseData>('/auth/login', credentials);
-                const data = response.data;
-
-                this.token = data.accessToken;
+                this.token = response.data.accessToken;
                 localStorage.setItem(AUTH_TOKEN_KEY, this.token);
 
+                // 登录成功后，立即获取完整的用户信息
                 await this.fetchUser();
 
                 if (this.user) {
                     this.status = 'success';
                     return true;
                 } else {
+                    // 如果 fetchUser 失败，它会抛出错误，被下面的 catch 块捕获
                     throw new Error("登录成功但获取用户信息失败。");
                 }
+
             } catch (err: any) {
                 this.status = 'error';
-                this.error = err.response?.data?.error || err.response?.data?.message || '登录失败，请检查凭据或网络。';
-                this.token = null;
-                this.user = null;
-                localStorage.removeItem(AUTH_TOKEN_KEY);
-                localStorage.removeItem(USER_DATA_KEY);
+                this.error = err.response?.data?.error || err.message || '登录失败，请检查凭据或网络。';
+                // 清理状态
+                await this.logout();
                 return false;
             }
         },
 
+        /**
+         * 用户注册
+         */
         async register(registrationData: RegisterRequest) {
             this.status = 'loading';
             this.error = null;
@@ -83,12 +117,20 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async fetchUser() {
-            if (!this.token) return null;
+        /**
+         * 使用 Token 获取当前用户信息
+         */
+        async fetchUser(): Promise<User | null> {
+            if (!this.token) {
+                this.logout();
+                return null;
+            }
             this.status = 'loading';
+            this.error = null;
             try {
                 const response = await apiClient.get<UserProfileData>('/profile/me');
                 const profileData = response.data;
+
                 this.user = {
                     id: String(profileData.id),
                     username: profileData.username,
@@ -99,7 +141,7 @@ export const useAuthStore = defineStore('auth', {
                     major: profileData.major,
                     graduationYear: profileData.graduationYear,
                     resumes: profileData.resumes ? profileData.resumes.map(r => ({ ...r, id: String(r.id) })) : [],
-                    authorities: new Set(profileData.authorities || [])
+                    authorities: profileData.authorities || [] // 确保是数组
                 };
                 this._persistUser();
                 this.status = 'success';
@@ -107,11 +149,14 @@ export const useAuthStore = defineStore('auth', {
             } catch (err: any) {
                 this.status = 'error';
                 this.error = '无法加载您的用户信息，您的会话可能已过期。';
-                await this.logout(); // 如果获取失败，执行登出清理
-                throw err; // 重新抛出错误，让调用者知道失败了
+                await this.logout(); // 获取失败，清理无效的登录状态
+                throw err; // 重新抛出错误，以便路由守卫等可以捕获
             }
         },
 
+        /**
+         * 用户登出
+         */
         async logout() {
             this.user = null;
             this.token = null;
@@ -119,10 +164,20 @@ export const useAuthStore = defineStore('auth', {
             localStorage.removeItem(USER_DATA_KEY);
             this.status = 'idle';
             this.error = null;
-            console.log("用户已登出 (本地状态已清除)");
+            this.isSessionExpired = false; // **重要**: 登出时重置会话过期状态
         },
 
-        async updateUserProfile(profileData: UpdateUserProfileRequest) {
+        /**
+         * 标记会话已过期 (由 apiClient 拦截器调用)
+         */
+        setSessionExpired() {
+            this.isSessionExpired = true;
+        },
+
+        /**
+         * 更新用户个人资料
+         */
+        async updateUserProfile(profileData: UpdateUserProfileRequest): Promise<boolean> {
             if (!this.user) return false;
             this.status = 'loading'; this.error = null;
             try {
@@ -131,12 +186,37 @@ export const useAuthStore = defineStore('auth', {
                 this._persistUser();
                 this.status = 'success'; return true;
             } catch (err:any) {
-                this.status = 'error';
-                this.error = err.response?.data?.error || '更新个人信息失败。';
-                return false;
+                this.status = 'error'; this.error = err.response?.data?.error || '更新个人信息失败。'; return false;
             }
         },
 
+        /**
+         * 上传头像
+         */
+        async uploadAvatar(file: File): Promise<string | null> {
+            if (!this.user) return null;
+            this.status = 'loading'; this.error = null;
+            try {
+                const formData = new FormData();
+                formData.append('avatarFile', file);
+                const response = await apiClient.post<{ avatarUrl: string }>('/profile/avatar', formData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+                const newUrl = response.data.avatarUrl;
+                if (this.user && newUrl) {
+                    this.user.avatarUrl = newUrl;
+                    this._persistUser();
+                }
+                this.status = 'success';
+                return newUrl;
+            } catch (err: any) {
+                this.status = 'error'; this.error = err.response?.data?.error || '头像上传失败。'; return null;
+            }
+        },
+
+        /**
+         * 上传简历
+         */
         async uploadResume(file: File): Promise<ResumeInfo | null> {
             if (!this.user) return null;
             this.status = 'loading'; this.error = null;
@@ -157,7 +237,10 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async deleteResume(resumeId: string) {
+        /**
+         * 删除简历
+         */
+        async deleteResume(resumeId: string): Promise<boolean> {
             if (!this.user || !this.user.resumes) return false;
             this.status = 'loading'; this.error = null;
             try {
@@ -172,7 +255,10 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        async changePassword(passwordData: ChangePasswordRequest) {
+        /**
+         * 修改密码
+         */
+        async changePassword(passwordData: ChangePasswordRequest): Promise<boolean> {
             if (!this.user) return false;
             this.status = 'loading'; this.error = null;
             try {
@@ -183,53 +269,24 @@ export const useAuthStore = defineStore('auth', {
             }
         },
 
-        // **** 新增/恢复 requestAccountDeletion action ****
+        /**
+         * 请求删除账户
+         */
         async requestAccountDeletion(): Promise<boolean> {
             if (!this.user) {
                 this.error = "用户未登录，无法执行此操作。";
                 return false;
             }
-            this.status = 'loading';
-            this.error = null;
+            this.status = 'loading'; this.error = null;
             try {
-                // 假设后端API是 DELETE /api/profile/me
-                await apiClient.delete('/api/profile/me'); // 发送删除请求到后端
-                console.warn(`用户 ${this.user.username} 的账户删除请求已成功发送至后端。`);
-
-                // 成功后，执行前端登出逻辑
-                this.logout();
+                await apiClient.delete('/profile/me');
+                await this.logout(); // 后端成功删除后，前端执行登出清理
                 this.status = 'success';
                 return true;
             } catch (err: any) {
                 this.status = 'error';
-                this.error = err.response?.data?.error || '账户删除请求失败，请稍后再试。';
-                console.error('账户删除错误:', this.error, err);
+                this.error = err.response?.data?.error || '账户删除请求失败。';
                 return false;
-            }
-        },
-        async uploadAvatar(file: File): Promise<string | null> { // 返回 string 或 null
-            if (!this.user) return null;
-            this.status = 'loading';
-            this.error = null;
-            try {
-                const formData = new FormData();
-                formData.append('avatarFile', file);
-
-                const response = await apiClient.post<{ avatarUrl: string }>('/profile/avatar', formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' }
-                });
-
-                const newUrl = response.data.avatarUrl;
-                if (this.user && newUrl) {
-                    this.user.avatarUrl = newUrl; // 更新 store 中的头像 URL
-                    this._persistUser();
-                }
-                this.status = 'success';
-                return newUrl; // **返回新的 URL**
-            } catch (err:any) {
-                this.status = 'error';
-                this.error = err.response?.data?.error || '头像上传失败。';
-                return null;
             }
         },
     },

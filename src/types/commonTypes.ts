@@ -20,17 +20,13 @@ export interface SelectOption {
 export type NotificationType = 'success' | 'error' | 'info' | 'warning';
 
 /**
- * 用于匹配 Spring Data Page 对象的标准分页数据结构
+ * **核心修正点**: 更新分页对象结构以匹配 MyBatis-Plus 的 IPage
  * @template T 列表内容的类型
  */
 export interface Page<T> {
-    content: T[];           // 当前页的数据列表
-    totalPages: number;       // 总页数
-    totalElements: number;    // 总记录数
-    size: number;             // 每页记录数
-    number: number;           // 当前页码 (从 0 开始)
-    first: boolean;           // 是否为第一页
-    last: boolean;            // 是否为最后一页
-    numberOfElements?: number; // 当前页的实际记录数 (可选)
-    // sort?: any;             // 排序信息 (如果需要可以添加)
+    records: T[];         // **修正**: 从 content 改为 records
+    total: number;          // **修正**: 从 totalElements 改为 total
+    size: number;           // 每页数量
+    current: number;        // **修正**: 从 number 改为 current (页码, 从 1 开始)
+    pages: number;          // **修正**: 从 totalPages 改为 pages
 }

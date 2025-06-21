@@ -11,7 +11,7 @@ export interface User {
     major?: string;
     graduationYear?: string;
     resumes?: ResumeInfo[];
-    authorities?: Set<string>;
+    authorities?: string[]; // <-- **确保这里是 string[]**
 }
 
 // 用于论坛等处的简化用户信息

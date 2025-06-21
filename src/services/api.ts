@@ -14,6 +14,30 @@ const apiClient = axios.create({
 // 请求拦截器
 apiClient.interceptors.request.use(
     (config) => {
+        // 1. 定义哪些路径属于“题库模块”
+        const practiceApiPaths = [
+            '/questions/search',                // 搜索题目
+            '/questions/generate-personalized', // 生成个性化题目
+            '/questions/generate-public',       // 生成公共题目 (管理员)
+            '/practice/questions',              // 更新题目状态、收藏等
+        ];
+
+        // 2. 检查当前请求的URL是否与题库模块相关
+        const isPracticeApiCall = practiceApiPaths.some(path => config.url?.startsWith(path));
+
+        // 3. 如果是题库模块的请求，并且它有请求体(data)，就打印出来
+        if (isPracticeApiCall && config.data) {
+            console.log(`[API Request] ➡️ 发送到 ${config.url}:`);
+            console.log(config.data);
+        }
+
+
+
+
+
+
+
+
         // 定义一个公共路径列表，这些路径下的请求不应携带Token
         const publicPaths = ['/auth/login', '/auth/register'];
 
@@ -36,11 +60,18 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
     (response) => response,
     async (error) => {
-        // 只在组件上下文中安全地使用 useAuthStore
-        // 在这里直接跳转可能导致问题，更安全的做法是让组件或路由守卫处理
-        if (error.response && (error.response.status === 401 || error.response.status === 403)) {
-            console.warn(`收到 ${error.response.status} 错误，可能需要重新登录。`);
-            // 可以在这里触发一个全局事件，通知App.vue执行登出和跳转
+        const authStore = useAuthStore();
+        const originalRequest = error.config;
+
+        // 当收到 401 或 403 错误，并且不是因为重试失败时
+        if (error.response && [401, 403].includes(error.response.status) && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            // 如果用户当前在前端是“已认证”状态，说明是 token 过期了
+            if (authStore.isAuthenticated) {
+                console.warn(`收到 ${error.response.status} 错误，标记会话为已过期。`);
+                authStore.setSessionExpired(); // **核心修改点**: 调用 action 标记会话过期
+            }
         }
         return Promise.reject(error);
     }

@@ -127,28 +127,28 @@ const routes: Array<RouteRecordRaw> = [
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
 
-    // --- 练习模块路由 ---
+    // --- **练习模块路由 (修正后)** ---
     {
         path: '/practice',
-        name: 'PracticeHome', // <-- 名称与 navigation.ts 对应
-        component: () => import('../views/practice/PracticeHomeView.vue'),
+        name: 'PracticeHome', // "开始练习" 链接应指向这里
+        component: () => import('../views/practice/PracticeHomeView.vue'), // 指向新的选择主页
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
         path: '/practice/tech',
-        name: 'TechnicalPractice',
+        name: 'TechnicalPractice', // 技术练习页
         component: () => import('../views/practice/TechnicalPracticeView.vue'),
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
-        path: '/practice/oj', // 这个路径代表“在线判题(Online Judge)”模式
-        name: 'AlgorithmPractice', // <-- **核心修正点：将名称改为 'AlgorithmPractice'**
-        component: () => import('../views/practice/PracticeView.vue'), // 确保它指向正确的刷题列表视图组件
+        path: '/practice/oj',
+        name: 'AlgorithmPractice', // 算法练习页 (OJ 列表)
+        component: () => import('../views/practice/PracticeView.vue'), // 指向我们之前实现的刷题列表页
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
     },
     {
         path: '/practice/problem/:problemId',
-        name: 'ProblemSolveView',
+        name: 'ProblemSolveView', // 单个算法题的作答页面
         component: () => import('../views/practice/ProblemSolveView.vue'),
         props: true,
         meta: { requiresAuth: true, layout: 'DefaultLayout' },
